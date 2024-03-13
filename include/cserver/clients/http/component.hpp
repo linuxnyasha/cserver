@@ -3,9 +3,9 @@
 #include <cserver/server/http/http_response.hpp>
 #include <cserver/engine/components.hpp>
 #include <cserver/engine/coroutine.hpp>
+#include <cserver/utils/boost_error_wrapper.hpp>
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
-#include <boost/asio/error.hpp>
 #include <utempl/constexpr_string.hpp>
 
 namespace cserver::server::http {
@@ -46,12 +46,24 @@ struct HttpClient {
     boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(this->taskProcessor.ioContext, this->ctx);
     boost::asio::ip::tcp::resolver::iterator endpoint = 
       co_await this->resolver.async_resolve({request.request.url.host(), request.request.url.has_port() ? request.request.url.port() : request.request.url.scheme()}, boost::asio::use_awaitable);
-    co_await boost::asio::async_connect(socket.lowest_layer(), endpoint, boost::asio::use_awaitable);
-    co_await socket.async_handshake(boost::asio::ssl::stream_base::client, boost::asio::use_awaitable);
+    auto [ec, _] = co_await boost::asio::async_connect(socket.lowest_layer(), endpoint, boost::asio::as_tuple(boost::asio::use_awaitable));
+    if(ec) {
+      throw BoostErrorWrapper{ec};
+    };
+    co_await socket.async_handshake(boost::asio::ssl::stream_base::client, boost::asio::redirect_error(boost::asio::use_awaitable, ec));
+    if(ec) {
+      throw BoostErrorWrapper{ec};
+    };
     std::string req(request.request.ToString());
-    co_await boost::asio::async_write(socket, boost::asio::buffer(req.data(), req.size()), boost::asio::use_awaitable);
+    co_await boost::asio::async_write(socket, boost::asio::buffer(req.data(), req.size()), boost::asio::redirect_error(boost::asio::use_awaitable, ec));
+    if(ec) {
+      throw BoostErrorWrapper{ec};
+    };
     std::string serverResponse;
-    co_await boost::asio::async_read_until(socket, boost::asio::dynamic_buffer(serverResponse), "\r\n\r\n", boost::asio::use_awaitable);
+    co_await boost::asio::async_read_until(socket, boost::asio::dynamic_buffer(serverResponse), "\r\n\r\n", boost::asio::redirect_error(boost::asio::use_awaitable, ec));
+    if(ec) {
+      throw BoostErrorWrapper{ec};
+    };
     server::http::HTTPResponse response;
     std::istringstream responseStream(std::move(serverResponse));
     std::string httpVersion;
@@ -67,7 +79,10 @@ struct HttpClient {
     if(response.headers.contains("Content-Length")) {
       auto size = std::stoi(response.headers["Content-Length"]);
       response.body.reserve(size);
-      co_await boost::asio::async_read(socket, boost::asio::dynamic_buffer(response.body), boost::asio::transfer_at_least(size), boost::asio::use_awaitable);
+      co_await boost::asio::async_read(socket, boost::asio::dynamic_buffer(response.body), boost::asio::transfer_at_least(size), boost::asio::redirect_error(boost::asio::use_awaitable, ec));
+      if(ec) {
+        throw BoostErrorWrapper{ec};
+      };
       co_return response;
     };
     for(;;) {
@@ -76,7 +91,7 @@ struct HttpClient {
         break;
       };
       if(ec) {
-        throw ec;
+        throw BoostErrorWrapper{ec};
       };
     };
     co_return response;
