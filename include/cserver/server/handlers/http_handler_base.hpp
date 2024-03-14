@@ -7,18 +7,19 @@
 
 namespace cserver::server::handlers {
 
-template <typename T>
 struct HTTPHandlerBase {
-  template <utempl::ConstexprString name>
+  template <typename T, utempl::ConstexprString name>
   static consteval auto Adder(const auto& context) {
     return context.TransformComponents([]<typename TT>(const ComponentConfig<T::kHandlerManagerName, TT>) {
       return ComponentConfig<T::kHandlerManagerName, typename TT::template AddHandler<ComponentConfig<name, T>>>{};
     });
   };
-  inline auto HandleRequest(cserver::server::http::HTTPRequest&& request,
-                            cserver::server::http::HTTPResponse& response) -> Task<std::string> requires requires(T t) {t.HandleRequestThrow(std::move(request), response);} {
+  template <typename Self>
+  inline auto HandleRequest(this Self&& self, cserver::server::http::HTTPRequest&& request,
+                            cserver::server::http::HTTPResponse& response) -> Task<std::string> requires requires{self.HandleRequestThrow(std::move(request), response);} {
+    using T = std::remove_cvref_t<Self>;
     try {
-      co_return co_await static_cast<T&>(*this).HandleRequestThrow(std::move(request), response);
+      co_return co_await std::forward<Self>(self).HandleRequestThrow(std::move(request), response);
     } catch(const std::exception& err) {
       fmt::println("Error in handler with default name {}: {}", T::kName, err.what());
     } catch(...) {
@@ -28,10 +29,12 @@ struct HTTPHandlerBase {
     response.statusMessage = "Internal Server Error";
     co_return "Internal Server Error";
   };
-  inline auto HandleRequestStream(cserver::server::http::HTTPRequest&& request,
-                                  cserver::server::http::HTTPStream& stream) -> Task<void> requires requires(T t) {t.HandleRequestStreamThrow(std::move(request), stream);} {
+  template <typename Self>
+  inline auto HandleRequestStream(this Self&& self, cserver::server::http::HTTPRequest&& request,
+                                  cserver::server::http::HTTPStream& stream) -> Task<void> requires requires{self.HandleRequestStreamThrow(std::move(request), stream);} {
+    using T = std::remove_cvref_t<Self>;
     try {
-      co_await static_cast<T&>(*this).HandleRequestStreamThrow(std::move(request), stream);
+      co_await std::forward<Self>(self).HandleRequestStreamThrow(std::move(request), stream);
     } catch(const std::exception& err) {
       fmt::println("Error in handler with default name {}: {}", T::kName, err.what());
     } catch(...) {
