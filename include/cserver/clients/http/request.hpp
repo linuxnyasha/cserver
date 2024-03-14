@@ -81,11 +81,15 @@ struct Request {
   inline constexpr auto ToString() const -> std::string {
     return this->request.ToString();
   };
-  inline auto Perform() && -> cserver::Task<server::http::HTTPResponse> {
-    co_return co_await client.PerformRequest(std::move(*this).AddHeaderIfNotExists("Transfer-Encoding", "Content-Length", std::to_string(this->request.body.size())));
+  template <typename... Flags>
+  inline auto Perform(Flags&&... flags) &&
+    -> decltype(this->client.PerformRequest(std::move(*this).AddHeaderIfNotExists("Transfer-Encoding", "Content-Length", std::to_string(this->request.body.size())), std::forward<Flags>(flags)...)) {
+    co_return co_await this->client.PerformRequest(std::move(*this).AddHeaderIfNotExists("Transfer-Encoding", "Content-Length", std::to_string(this->request.body.size())), std::forward<Flags>(flags)...);
   };
-  inline auto Perform() & -> cserver::Task<server::http::HTTPResponse> {
-    co_return co_await client.PerformRequest(this->AddHeaderIfNotExists("Transfer-Encoding", "Content-Length", std::to_string(this->request.body.size())));
+  template <typename... Flags>
+  inline auto Perform(Flags&&... flags) & 
+    -> decltype(this->client.PerformRequest(this->AddHeaderIfNotExists("Transfer-Encoding", "Content-Length", std::to_string(this->request.body.size())), std::forward<Flags>(flags)...)) {
+    co_return co_await this->client.PerformRequest(this->AddHeaderIfNotExists("Transfer-Encoding", "Content-Length", std::to_string(this->request.body.size())), std::forward<Flags>(flags)...);
   };
 };
 

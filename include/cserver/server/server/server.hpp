@@ -3,6 +3,7 @@
 #include <cserver/server/http/http_request_parser.hpp>
 #include <cserver/server/http/http_response.hpp>
 #include <cserver/engine/coroutine.hpp>
+#include <cserver/server/http/http_stream.hpp>
 #include <boost/asio.hpp>
 
 
@@ -51,6 +52,22 @@ struct Server {
       },
       port(T::kConfig.template Get<name>().template Get<"port">()) {
   };
+  template<auto I, typename Socket>
+  auto ProcessHandler(Socket&& socket, http::HTTPRequest request) -> Task<void> {
+    if constexpr(requires(http::HTTPStream& stream){Get<I>(this->handlers).HandleRequestStream(std::move(request), stream);}) {
+      http::HTTPStream stream{std::move(socket)};
+      co_await Get<I>(this->handlers).HandleRequestStream(std::move(request), stream);
+      co_return;
+    } else {
+      http::HTTPResponse response{};
+      response.body = co_await Get<I>(this->handlers).HandleRequest(std::move(request), response);
+      response.headers["Content-Length"] = std::to_string(response.body.size());
+      response.headers["Server"] = "cserver/1";
+      auto data = response.ToString();
+      co_await boost::asio::async_write(socket, boost::asio::buffer(data.data(), data.size()), boost::asio::use_awaitable);
+      socket.close();
+    };
+  };
   auto Reader(boost::asio::ip::tcp::socket socket) -> Task<void> {
     std::string buffer;
     buffer.reserve(socket.available());
@@ -60,15 +77,7 @@ struct Server {
     co_await [&]<auto... Is>(std::index_sequence<Is...>) -> cserver::Task<void> {
       (co_await [&]<auto I>(utempl::Wrapper<I>) -> cserver::Task<void> {
         if(request.url.path().substr(0, Get<I>(kPaths).size()) == Get<I>(kPaths)) {
-          flag = true;
-          http::HTTPResponse response{};
-          response.body = co_await Get<I>(this->handlers).HandleRequest(std::move(request), response);
-
-          response.headers["Content-Length"] = std::to_string(response.body.size());
-          response.headers["Server"] = "cserver/1";
-          auto data = response.ToString();
-          co_await boost::asio::async_write(socket, boost::asio::buffer(data.data(), data.size()), boost::asio::use_awaitable);
-          socket.close();
+          co_await this->ProcessHandler<I>(std::move(socket), std::move(request));
         };
       }(utempl::Wrapper<Is>{}), ...);
     }(std::index_sequence_for<Ts...>());
