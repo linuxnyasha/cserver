@@ -8,7 +8,7 @@ namespace cserver::engine::basic {
 template <std::size_t Size = 0>
 struct TaskProcessor {
   boost::asio::io_context ioContext;
-  std::array<std::jthread, Size> pool;
+  std::array<std::thread, Size> pool;
   static constexpr utempl::ConstexprString kName = "basicTaskProcessor";
   inline constexpr TaskProcessor(auto, auto&) :
       ioContext{},
@@ -23,10 +23,15 @@ struct TaskProcessor {
         return {};
       });
   };
+  inline constexpr ~TaskProcessor() {
+    for(auto& thread : this->pool) {
+      thread.join();
+    };
+  };
 
   inline auto Run() {
     for(auto& thread : this->pool) {
-      thread = std::jthread([&]{
+      thread = std::thread([&]{
         boost::asio::executor_work_guard<decltype(this->ioContext.get_executor())> guard{this->ioContext.get_executor()};
         this->ioContext.run();
       });
