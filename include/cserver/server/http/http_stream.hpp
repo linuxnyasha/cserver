@@ -1,6 +1,5 @@
 #pragma once
 #include <cserver/engine/coroutine.hpp>
-#include <cserver/utils/boost_error_wrapper.hpp>
 #include <fmt/format.h>
 #include <boost/asio.hpp>
 
@@ -11,17 +10,11 @@ struct HTTPStream {
   std::stringstream stream = {};
   inline auto SetMethod(std::string method) -> Task<void> {
     method += " ";
-    auto [ec, n] = co_await boost::asio::async_write(this->socket, boost::asio::buffer(method.data(), method.size()), boost::asio::transfer_all(), boost::asio::as_tuple(boost::asio::use_awaitable));
-    if(ec) {
-      throw BoostErrorWrapper{ec};
-    };
+    co_await boost::asio::async_write(this->socket, boost::asio::buffer(method.data(), method.size()), boost::asio::transfer_all(), boost::asio::use_awaitable);
   };
    inline auto SetStatus(std::string status) -> Task<void> {
     status = fmt::format("HTTP/1.1 {}\r\n", std::move(status));
-    auto [ec, n] = co_await boost::asio::async_write(this->socket, boost::asio::buffer(status.data(), status.size()), boost::asio::transfer_all(), boost::asio::as_tuple(boost::asio::use_awaitable));
-    if(ec) {
-      throw BoostErrorWrapper{ec};
-    };
+    co_await boost::asio::async_write(this->socket, boost::asio::buffer(status.data(), status.size()), boost::asio::transfer_all(), boost::asio::use_awaitable);
   };
  
   inline auto SetHeader(std::string first, std::string second) -> Task<void> {
@@ -31,16 +24,10 @@ struct HTTPStream {
   inline auto SetEndOfHeaders() -> Task<void> {
     this->stream << "\r\n";
     auto str = this->stream.str();
-    auto [ec, n] = co_await boost::asio::async_write(this->socket, boost::asio::buffer(str.data(), str.size()), boost::asio::transfer_all(), boost::asio::as_tuple(boost::asio::use_awaitable));
-    if(ec) {
-      throw BoostErrorWrapper{ec};
-    };
+    co_await boost::asio::async_write(this->socket, boost::asio::buffer(str.data(), str.size()), boost::asio::transfer_all(), boost::asio::use_awaitable);
   };
   inline auto PushBodyChunk(std::string_view chunk) -> Task<void> {
-    auto [ec, n] = co_await boost::asio::async_write(this->socket, boost::asio::buffer(chunk.data(), chunk.size()), boost::asio::transfer_all(), boost::asio::as_tuple(boost::asio::use_awaitable));
-    if(ec) {
-      throw BoostErrorWrapper{ec};
-    };
+    co_await boost::asio::async_write(this->socket, boost::asio::buffer(chunk.data(), chunk.size()), boost::asio::transfer_all(), boost::asio::use_awaitable);
   };
   inline auto Close() -> Task<void> {
     this->socket.close();

@@ -108,26 +108,16 @@ public:
     boost::asio::ssl::stream<boost::asio::ip::tcp::socket> socket(this->taskProcessor.ioContext, this->ctx);
     boost::asio::ip::tcp::resolver::iterator endpoint = 
       co_await this->resolver.async_resolve({request.request.url.host(), request.request.url.has_port() ? request.request.url.port() : request.request.url.scheme()}, boost::asio::use_awaitable);
-    auto [ec, _] = co_await boost::asio::async_connect(socket.lowest_layer(), endpoint, boost::asio::as_tuple(boost::asio::use_awaitable));
-    if(ec) {
-      throw BoostErrorWrapper{ec};
-    };
-    co_await socket.async_handshake(boost::asio::ssl::stream_base::client, boost::asio::redirect_error(boost::asio::use_awaitable, ec));
-    if(ec) {
-      throw BoostErrorWrapper{ec};
-    };
+    co_await boost::asio::async_connect(socket.lowest_layer(), endpoint, boost::asio::use_awaitable);
+
+    co_await socket.async_handshake(boost::asio::ssl::stream_base::client, boost::asio::use_awaitable);
+
     std::string req(request.request.ToString());
-    co_await boost::asio::async_write(socket, boost::asio::buffer(req.data(), req.size()), boost::asio::transfer_all(), boost::asio::redirect_error(boost::asio::use_awaitable, ec));
-    if(ec) {
-      throw BoostErrorWrapper{ec};
-    };
+    co_await boost::asio::async_write(socket, boost::asio::buffer(req.data(), req.size()), boost::asio::transfer_all(), boost::asio::use_awaitable);
     auto response = co_await this->ReadHeaders(socket, flags...);
     if constexpr(kUseStreaming) {
       co_return clients::http::Response<HttpClient<TaskProcessor>, decltype(socket)>{*this, std::move(socket), std::move(response)};
     } else {
-      if(response.statusCode != 200) {
-        co_return response;
-      };
       if(response.headers.contains("Content-Length")) {
         auto size = std::stoi(response.headers["Content-Length"]);
         response.body = co_await ReadBody(std::move(socket), size, flags...);
