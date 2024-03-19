@@ -8,10 +8,10 @@
 namespace cserver::server::handlers {
 
 struct HTTPHandlerBase {
-  template <typename T, utempl::ConstexprString name>
+  template <typename T, utempl::ConstexprString name, Options Options>
   static consteval auto Adder(const auto& context) {
-    return context.TransformComponents([]<typename TT>(const ComponentConfig<T::kHandlerManagerName, TT>) {
-      return ComponentConfig<T::kHandlerManagerName, typename TT::template AddHandler<ComponentConfig<name, T>>>{};
+    return context.TransformComponents([]<typename TT>(const ComponentConfig<T::kHandlerManagerName, TT, Options>) {
+      return ComponentConfig<T::kHandlerManagerName, typename TT::template AddHandler<ComponentConfig<name, T, Options>>, Options>{};
     });
   };
   template <typename Self>

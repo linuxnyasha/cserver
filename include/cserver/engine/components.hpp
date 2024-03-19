@@ -3,14 +3,30 @@
 #include <thread>
 
 namespace cserver {
+struct SeparatedComponent {};
+template <typename... Ts>
+using Options = utempl::TypeList<Ts...>;
+
+template <utempl::ConstexprString name, typename T, Options Options>
+struct ComponentConfig {};
+
+namespace impl {
 
 template <utempl::ConstexprString name, typename T>
 struct NamedValue {
   T value;
 };
 
-template <utempl::ConstexprString name, typename T>
-struct ComponentConfig {};
+template <typename T>
+using GetTypeFromComponentConfig = decltype(
+  []<utempl::ConstexprString name, typename TT, Options Options>(const ComponentConfig<name, TT, Options>&) -> TT {
+  }(std::declval<T>()));
+
+template <typename T>
+inline constexpr utempl::ConstexprString kNameFromComponentConfig = 
+  decltype([]<utempl::ConstexprString name, typename TT, Options Options>(const ComponentConfig<name, TT, Options>&) {
+    return utempl::Wrapper<name>{};
+  }(std::declval<T>()))::kValue;
 
 template <typename T>
 inline constexpr auto TransformIfOk(T&& value, auto&& f) {
@@ -22,12 +38,14 @@ inline constexpr auto TransformIfOk(T&& value, auto&& f) {
 };
 
 
+} // namespace impl
+
 template <typename... Ts>
 struct ConstexprConfig {
   utempl::Tuple<Ts...> data;
   template <utempl::ConstexprString Key>
   inline constexpr auto Get() const -> auto {
-    return [&]<typename... TTs, utempl::ConstexprString... names>(const ConstexprConfig<NamedValue<names, TTs>...>&){
+    return [&]<typename... TTs, utempl::ConstexprString... names>(const ConstexprConfig<impl::NamedValue<names, TTs>...>&){
       constexpr auto list = utempl::TypeList<utempl::Wrapper<names>...>{};
       constexpr std::size_t I = Find<utempl::Wrapper<Key>>(list);
       if constexpr(I < sizeof...(Ts)) {
@@ -36,22 +54,23 @@ struct ConstexprConfig {
     }(*this);
   };
   template <utempl::ConstexprString Key, typename T>
-  inline constexpr auto Append(T&& value) const -> ConstexprConfig<Ts..., NamedValue<Key, std::remove_cvref_t<T>>> {
-    return {.data = TupleCat(this->data, utempl::MakeTuple(NamedValue<Key, std::remove_cvref_t<T>>{std::forward<T>(value)}))};
+  inline constexpr auto Append(T&& value) const -> ConstexprConfig<Ts..., impl::NamedValue<Key, std::remove_cvref_t<T>>> {
+    return {.data = TupleCat(this->data, utempl::MakeTuple(impl::NamedValue<Key, std::remove_cvref_t<T>>{std::forward<T>(value)}))};
   };
 };
 
-template <ConstexprConfig config, auto names, typename... Ts>
+template <ConstexprConfig config, auto names, auto Options, typename... Ts>
 struct ServiceContext {
-  utempl::Tuple<Ts...> storage;
   static constexpr auto kConfig = config;
   static constexpr auto kList = utempl::TypeList<Ts...>{};
+  static constexpr auto kThreadsCount = config.template Get<"threads">();
+  utempl::Tuple<Ts...> storage;
   inline constexpr ServiceContext() :
       storage{
         [&]<auto... Is>(std::index_sequence<Is...>) -> utempl::Tuple<Ts...> {
           return {[&]<auto I>(utempl::Wrapper<I>) {
             return [&]() -> std::remove_cvref_t<decltype(Get<I>(storage))> {
-              return {decltype(Get<I>(names)){}, *this};
+              return {utempl::Wrapper<Get<I>(names)>{}, *this};
             };
           }(utempl::Wrapper<Is>{})...};
         }(std::index_sequence_for<Ts...>())
@@ -67,7 +86,7 @@ struct ServiceContext {
   };
   template <utempl::ConstexprString name>
   inline constexpr auto FindComponent() -> auto& {
-    constexpr auto I = utempl::Find<utempl::Wrapper<name>>(names);
+    constexpr auto I = utempl::Find(names, name);
     return Get<I>(this->storage);
   };
   template <typename T>
@@ -84,14 +103,14 @@ template <ConstexprConfig config = {}, typename... Ts>
 struct ServiceContextBuilder {
   static constexpr auto kList = utempl::kTypeList<Ts...>;
   static constexpr auto kConfig = config;
-  template <typename T, utempl::ConstexprString name = T::kName>
-  static consteval auto Append() -> decltype(T::template Adder<name>(ServiceContextBuilder<config, Ts..., ComponentConfig<name, T>>{})) {
+  template <typename T, utempl::ConstexprString name = T::kName, typename... Os>
+  static consteval auto Append(Options<Os...> = {}) -> decltype(T::template Adder<name, Options<Os...>{}>(ServiceContextBuilder<config, Ts..., ComponentConfig<name, T, Options<Os...>{}>>{})) {
     return {};
   };
 
-  template <typename T, utempl::ConstexprString name = T::kName>
-  static consteval auto Append() -> ServiceContextBuilder<config, Ts..., ComponentConfig<name, T>> 
-        requires (!requires(ServiceContextBuilder<config, Ts..., ComponentConfig<name, T>> builder) {T::template Adder<name>(builder);}) {
+  template <typename T, utempl::ConstexprString name = T::kName, typename... Os>
+  static consteval auto Append(Options<Os...> = {}) -> ServiceContextBuilder<config, Ts..., ComponentConfig<name, T, Options<Os...>{}>> 
+        requires (!requires(ServiceContextBuilder<config, Ts..., ComponentConfig<name, T, Options<Os...>{}>> builder) {T::template Adder<name, Options<Os...>{}>(builder);}) {
     return {};
   };
 
@@ -102,13 +121,13 @@ struct ServiceContextBuilder {
   };
 
   template <typename F>
-  static consteval auto TransformComponents(F&& f) -> ServiceContextBuilder<config, decltype(TransformIfOk(Ts{}, f))...> {
+  static consteval auto TransformComponents(F&& f) -> ServiceContextBuilder<config, decltype(impl::TransformIfOk(Ts{}, f))...> {
     return {};
   };
   template <utempl::ConstexprString name>
   static consteval auto FindComponent() {
-    return []<typename... TTs, utempl::ConstexprString... names>
-    (const ServiceContextBuilder<config,ComponentConfig<names, TTs>...>&) 
+    return []<typename... TTs, utempl::ConstexprString... names, Options... Options>
+    (const ServiceContextBuilder<config, ComponentConfig<names, TTs, Options>...>&) 
         -> decltype(utempl::Get<Find<utempl::Wrapper<name>>(utempl::TypeList<utempl::Wrapper<names>...>{})>(utempl::TypeList<TTs...>{})) {
       std::unreachable();
     }(ServiceContextBuilder<config, Ts...>{});
@@ -119,8 +138,9 @@ struct ServiceContextBuilder {
   };
 
   static constexpr auto Run() -> void {
-    []<utempl::ConstexprString... names, typename... TTs>(utempl::TypeList<ComponentConfig<names, TTs>...>) {
-      ServiceContext<config, utempl::kTypeList<utempl::Wrapper<names>...>, TTs...> context;
+    []<utempl::ConstexprString... names, typename... TTs, Options... Options>
+    (utempl::TypeList<ComponentConfig<names, TTs, Options>...>) {
+      ServiceContext<config, utempl::Tuple{names...}, utempl::Tuple{Options...}, TTs...> context;
       context.Run();
       for(;;) {
         std::this_thread::sleep_for(std::chrono::minutes(1));

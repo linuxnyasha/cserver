@@ -15,11 +15,11 @@ struct TaskProcessor {
       pool{} {
   };
 
-  template <utempl::ConstexprString name, typename T>
+  template <utempl::ConstexprString name, Options Options, typename T>
   static consteval auto Adder(const T& context) { 
     constexpr std::size_t Count = T::kConfig.template Get<name>().template Get<"threadPoolSize">();
     return context.TransformComponents(
-      [&](const ComponentConfig<name, TaskProcessor<>>&) -> ComponentConfig<name, TaskProcessor<Count>> {
+      [&](const ComponentConfig<name, TaskProcessor<>, Options>&) -> ComponentConfig<name, TaskProcessor<Count>, Options> {
         return {};
       });
   };

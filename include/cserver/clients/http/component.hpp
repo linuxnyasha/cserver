@@ -34,11 +34,11 @@ struct HttpClient {
     ctx(boost::asio::ssl::context::method::sslv23_client),
     resolver(this->taskProcessor.ioContext) {}
   
-  template <utempl::ConstexprString name, typename T>
+  template <utempl::ConstexprString name, Options Options, typename T>
   static consteval auto Adder(const T& context) { 
     using Type = std::remove_cvref_t<decltype(context.template FindComponent<"basicTaskProcessor">())>;
     return context.TransformComponents(
-      [&](const ComponentConfig<name, HttpClient<>>&) -> ComponentConfig<name, HttpClient<Type>> {
+      [&](const ComponentConfig<name, HttpClient<>, Options>&) -> ComponentConfig<name, HttpClient<Type>, Options> {
         return {};
       });
   };

@@ -8,16 +8,7 @@
 
 
 namespace cserver::server::server {
-namespace impl {
-template <typename T>
-using GetTypeFromComponentConfig = decltype([]<utempl::ConstexprString name, typename TT>(const ComponentConfig<name, TT>&) -> TT {}(std::declval<T>()));
 
-template <typename T>
-inline constexpr utempl::ConstexprString kNameFromComponentConfig = 
-  decltype([]<utempl::ConstexprString name, typename TT>(const ComponentConfig<name, TT>&) {
-    return utempl::Wrapper<name>{};
-  } (std::declval<T>()))::kValue;
-} // namespace impl
 
 template <utempl::ConstexprString TPName = "basicTaskProcessor", typename TaskProcessor = int, typename... Ts>
 struct Server {
@@ -27,7 +18,7 @@ struct Server {
   unsigned short port;
   static constexpr utempl::Tuple kNames = {impl::kNameFromComponentConfig<Ts>...};
   static constexpr utempl::Tuple kPaths = {impl::GetTypeFromComponentConfig<Ts>::kPath...};
-  template <utempl::ConstexprString name, typename T>
+  template <utempl::ConstexprString name, Options Options, typename T>
   static consteval auto Adder(const T& context) {
     constexpr utempl::ConstexprString tpName = [&]{
       if constexpr(requires{T::kConfig.template Get<name>().template Get<"taskProcessor">();}) {
@@ -38,7 +29,7 @@ struct Server {
     }();
     using TP = decltype(context.template FindComponent<tpName>());
     return context.TransformComponents(
-      [&](const ComponentConfig<name, Server<TPName, int, Ts...>>&) -> ComponentConfig<name, Server<tpName, TP, Ts...>> {
+      [&](const ComponentConfig<name, Server<TPName, int, Ts...>, Options>&) -> ComponentConfig<name, Server<tpName, TP, Ts...>, Options> {
         return {};
       });
   };
@@ -88,7 +79,7 @@ struct Server {
       co_await boost::asio::async_write(socket, boost::asio::buffer(error404.data(), error404.size()), boost::asio::use_awaitable);
     };
   };
-  auto Task() -> cserver::Task<void> {
+  auto Task() -> Task<void> {
     auto executor = co_await boost::asio::this_coro::executor;
     boost::asio::ip::tcp::acceptor acceptor{executor, {boost::asio::ip::tcp::v6(), this->port}};
     for(;;) {
