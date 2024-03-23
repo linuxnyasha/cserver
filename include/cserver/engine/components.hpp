@@ -5,7 +5,7 @@
 namespace cserver {
 struct SeparatedComponent {};
 template <typename... Ts>
-using Options = utempl::TypeList<Ts...>;
+struct Options : utempl::TypeList<Ts...> {};
 
 template <utempl::ConstexprString name, typename T, Options Options>
 struct ComponentConfig {};
@@ -97,7 +97,127 @@ struct ServiceContext {
 
 };
 
+namespace impl {
 
+namespace loopholes {
+
+template <auto I>
+struct Getter {
+  friend constexpr auto Magic(Getter<I>);
+};
+template <auto I, auto Value = 0>
+struct Injector {
+  friend constexpr auto Magic(Getter<I>) {return Value;};
+};
+
+
+template <auto I, typename...>
+concept Injected = requires{Magic(Getter<I>{});};
+
+template <typename Tag, auto Value>
+struct TagWithTalue {};
+
+
+template <auto I = 0, typename Tag, typename... Ts, auto = Injector<TagWithTalue<Tag, I>{}>{}>
+constexpr auto CounterImpl(...) {
+  return I;
+};
+
+template <auto I = 0, typename Tag, typename... Ts>
+consteval auto CounterImpl(std::size_t arg) requires Injected<TagWithTalue<Tag, I>{}, Ts...> {
+  return CounterImpl<I + 1, Tag, Ts...>(arg);
+};
+
+
+template <
+  typename Tag,
+  typename... Ts,
+  auto R = CounterImpl<0, Tag, Ts...>(std::size_t{})
+>
+consteval auto Counter(auto...) {
+  return R;
+};
+
+
+} // namespace loopholes
+
+
+template <typename Current, std::size_t I>
+struct DependencyInfoKey {};
+
+template <typename T, auto... Args>
+inline constexpr auto Use() {
+  std::ignore = T{Args...};
+};
+
+template <typename...>
+consteval auto Ignore() {};
+
+template <typename Current, ConstexprConfig config, typename... Ts>
+struct DependencyInfoInjector {
+  static constexpr ConstexprConfig kConfig = config;
+private:
+  template <utempl::ConstexprString name, utempl::ConstexprString... names, typename... TTs, Options... Options>
+  static consteval auto FindComponentTypeImpl(ComponentConfig<names, TTs, Options>...) {
+    constexpr auto I = utempl::Find(utempl::Tuple{std::string_view{names}...}, std::string_view{name});
+    return [] -> decltype(utempl::Get<I>(utempl::TypeList<TTs...>{})) {}();
+  };
+public:
+  template <utempl::ConstexprString name>
+  using FindComponentType = decltype(FindComponentTypeImpl<name>(Ts{}...));
+
+  template <typename T>
+  static constexpr auto FindComponentName =
+    []<utempl::ConstexprString... names, typename... Tss, Options... Options>
+    (ComponentConfig<names, Tss, Options>...) {
+      return Get<utempl::Find<T>(utempl::TypeList<Tss...>{})>(utempl::Tuple{names...});
+    }(Ts{}...);
+
+  template <
+    utempl::ConstexprString name,
+    typename...,
+    std::size_t I = loopholes::Counter<Current, utempl::Wrapper<name>>(),
+    auto = loopholes::Injector<
+      DependencyInfoKey<
+        Current,
+        I
+      >{},
+      utempl::TypeList<std::remove_reference_t<FindComponentType<name>>>{}
+    >{}
+  >
+  static constexpr auto FindComponent() -> FindComponentType<name>&;
+
+  template <
+    typename T,
+    typename...,
+    std::size_t I = loopholes::Counter<Current, utempl::Wrapper<FindComponentName<T>>>(),
+    auto = loopholes::Injector<
+      DependencyInfoKey<
+        Current,
+        I
+      >{},
+      utempl::TypeList<T>{}  
+    >{}
+  >
+  static constexpr auto FindComponent() -> T&;
+
+  template <std::size_t I = 0, typename... TTs>
+  static consteval auto GetDependencies() requires 
+      requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});} {
+    if constexpr(requires{GetDependencies<I + 1, TTs...>();}) {
+      return GetDependencies<I + 1, TTs..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>();
+    } else {
+      return utempl::kTypeList<TTs..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>;
+    };
+  };
+
+  template <utempl::ConstexprString name>
+  static inline consteval auto Inject() {
+    Ignore<decltype(Use<Current, utempl::Wrapper<name>{}, DependencyInfoInjector<Current, config, Ts...>{}>())>();
+  };
+};
+
+} // namespace impl
 
 template <ConstexprConfig config = {}, typename... Ts>
 struct ServiceContextBuilder {
