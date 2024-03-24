@@ -262,7 +262,7 @@ struct ServiceContextBuilder {
   static consteval auto FindComponent() {
     return []<typename... TTs, utempl::ConstexprString... names, Options... Options>
     (const ServiceContextBuilder<config, ComponentConfig<names, TTs, Options>...>&) 
-        -> decltype(utempl::Get<Find<utempl::Wrapper<name>>(utempl::TypeList<utempl::Wrapper<names>...>{})>(utempl::TypeList<TTs...>{})) {
+        -> decltype(utempl::Get<Find(utempl::Tuple{names...}, name)>(utempl::TypeList<TTs...>{})) {
       std::unreachable();
     }(ServiceContextBuilder<config, ComponentConfigs...>{});
   };
