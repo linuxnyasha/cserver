@@ -182,7 +182,7 @@ public:
         Current,
         I
       >{},
-      utempl::TypeList<std::remove_reference_t<FindComponentType<name>>>{}
+      name
     >{}
   >
   static constexpr auto FindComponent() -> FindComponentType<name>&;
@@ -196,21 +196,21 @@ public:
         Current,
         I
       >{},
-      utempl::TypeList<T>{}  
+      FindComponentName<T>
     >{}
   >
   static constexpr auto FindComponent() -> T&;
 
-  template <std::size_t I = 0, typename... TTs>
+  template <std::size_t I = 0, utempl::ConstexprString... names>
   static consteval auto GetDependencies() requires (I == 0 || 
       requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
     if constexpr(I == 0 && !requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
-      return utempl::TypeList{};
+      return utempl::Tuple{};
     } else {
-      if constexpr(requires{GetDependencies<I + 1, TTs...>();}) {
-        return GetDependencies<I + 1, TTs..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>();
+      if constexpr(requires{GetDependencies<I + 1, names...>();}) {
+        return GetDependencies<I + 1, names..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>();
       } else {
-        return utempl::kTypeList<TTs..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>;
+        return utempl::Tuple{names..., Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{})};
       };
     };
   };
@@ -223,7 +223,7 @@ public:
 
 } // namespace impl
 
-template <typename T, utempl::TypeList Dependencies>
+template <typename T, utempl::Tuple Dependencies>
 struct DependencyGraphElement {};
 
 
