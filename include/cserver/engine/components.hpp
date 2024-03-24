@@ -233,29 +233,29 @@ struct DependencyGraph {
 };
 
 
-template <ConstexprConfig config = {}, typename... Ts>
+template <ConstexprConfig config = {}, typename... ComponentConfigs>
 struct ServiceContextBuilder {
-  static constexpr auto kList = utempl::kTypeList<Ts...>;
+  static constexpr auto kList = utempl::kTypeList<ComponentConfigs...>;
   static constexpr auto kConfig = config;
   template <typename T, utempl::ConstexprString name = T::kName, typename... Os>
-  static consteval auto Append(Options<Os...> = {}) -> decltype(T::template Adder<name, Options<Os...>{}>(ServiceContextBuilder<config, Ts..., ComponentConfig<name, T, Options<Os...>{}>>{})) {
+  static consteval auto Append(Options<Os...> = {}) -> decltype(T::template Adder<name, Options<Os...>{}>(ServiceContextBuilder<config, ComponentConfigs..., ComponentConfig<name, T, Options<Os...>{}>>{})) {
     return {};
   };
 
   template <typename T, utempl::ConstexprString name = T::kName, typename... Os>
-  static consteval auto Append(Options<Os...> = {}) -> ServiceContextBuilder<config, Ts..., ComponentConfig<name, T, Options<Os...>{}>> 
-        requires (!requires(ServiceContextBuilder<config, Ts..., ComponentConfig<name, T, Options<Os...>{}>> builder) {T::template Adder<name, Options<Os...>{}>(builder);}) {
+  static consteval auto Append(Options<Os...> = {}) -> ServiceContextBuilder<config, ComponentConfigs..., ComponentConfig<name, T, Options<Os...>{}>> 
+        requires (!requires(ServiceContextBuilder<config, ComponentConfigs..., ComponentConfig<name, T, Options<Os...>{}>> builder) {T::template Adder<name, Options<Os...>{}>(builder);}) {
     return {};
   };
 
 
   template <utempl::ConstexprString Key, auto Value>
-  static consteval auto AppendConfigParam() -> ServiceContextBuilder<config.template Append<Key>(Value), Ts...> {
+  static consteval auto AppendConfigParam() -> ServiceContextBuilder<config.template Append<Key>(Value), ComponentConfigs...> {
     return {};
   };
 
   template <typename F>
-  static consteval auto TransformComponents(F&& f) -> ServiceContextBuilder<config, decltype(impl::TransformIfOk(Ts{}, f))...> {
+  static consteval auto TransformComponents(F&& f) -> ServiceContextBuilder<config, decltype(impl::TransformIfOk(ComponentConfigs{}, f))...> {
     return {};
   };
   template <utempl::ConstexprString name>
@@ -264,7 +264,7 @@ struct ServiceContextBuilder {
     (const ServiceContextBuilder<config, ComponentConfig<names, TTs, Options>...>&) 
         -> decltype(utempl::Get<Find<utempl::Wrapper<name>>(utempl::TypeList<utempl::Wrapper<names>...>{})>(utempl::TypeList<TTs...>{})) {
       std::unreachable();
-    }(ServiceContextBuilder<config, Ts...>{});
+    }(ServiceContextBuilder<config, ComponentConfigs...>{});
   };
 
   static consteval auto Config() {
@@ -272,16 +272,16 @@ struct ServiceContextBuilder {
   };
 
   static consteval auto GetDependencyGraph() {
-    return [&]<utempl::ConstexprString... names, typename... TTs, Options... Options>
-    (ComponentConfig<names, TTs, Options>...){
-      return DependencyGraph<DependencyGraphElement<TTs, 
-        []<utempl::ConstexprString name, typename T, ::cserver::Options OOptions>
-        (ComponentConfig<name, T, OOptions>) {
-          impl::DependencyInfoInjector<T, config, Ts...> injector;
+    return [&]<utempl::ConstexprString... names, typename... Components, Options... Options>
+    (ComponentConfig<names, Components, Options>...){
+      return DependencyGraph<DependencyGraphElement<Components, 
+        []<utempl::ConstexprString name, typename Component, ::cserver::Options OOptions>
+        (ComponentConfig<name, Component, OOptions>) {
+          impl::DependencyInfoInjector<Component, config, ComponentConfigs...> injector;
           injector.template Inject<name>();
           return injector.GetDependencies();
-        }(Ts{})>...>{};
-    }(Ts{}...);
+        }(ComponentConfigs{})>...>{};
+    }(ComponentConfigs{}...);
   };
 
 
@@ -293,7 +293,7 @@ struct ServiceContextBuilder {
       for(;;) {
         std::this_thread::sleep_for(std::chrono::minutes(1));
       };
-    }(utempl::TypeList<Ts...>{});
+    }(utempl::TypeList<ComponentConfigs...>{});
   };
 };
 } // namespace cserver
