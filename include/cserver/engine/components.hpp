@@ -69,7 +69,7 @@ struct ServiceContext {
       storage{
         [&]<auto... Is>(std::index_sequence<Is...>) -> utempl::Tuple<Ts...> {
           return {[&]<auto I>(utempl::Wrapper<I>) {
-            return [&]() -> std::remove_cvref_t<decltype(Get<I>(storage))> {
+            return [&] -> std::remove_cvref_t<decltype(Get<I>(storage))> {
               return {utempl::Wrapper<Get<I>(names)>{}, *this};
             };
           }(utempl::Wrapper<Is>{})...};
@@ -202,12 +202,16 @@ public:
   static constexpr auto FindComponent() -> T&;
 
   template <std::size_t I = 0, typename... TTs>
-  static consteval auto GetDependencies() requires 
-      requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});} {
-    if constexpr(requires{GetDependencies<I + 1, TTs...>();}) {
-      return GetDependencies<I + 1, TTs..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>();
+  static consteval auto GetDependencies() requires (I == 0 || 
+      requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
+    if constexpr(I == 0 && !requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
+      return utempl::TypeList{};
     } else {
-      return utempl::kTypeList<TTs..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>;
+      if constexpr(requires{GetDependencies<I + 1, TTs...>();}) {
+        return GetDependencies<I + 1, TTs..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>();
+      } else {
+        return utempl::kTypeList<TTs..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>;
+      };
     };
   };
 
@@ -218,6 +222,16 @@ public:
 };
 
 } // namespace impl
+
+template <typename T, utempl::TypeList Dependencies>
+struct DependencyGraphElement {};
+
+
+template <typename... Ts>
+struct DependencyGraph {
+  static constexpr auto kValue = utempl::TypeList<Ts...>{};
+};
+
 
 template <ConstexprConfig config = {}, typename... Ts>
 struct ServiceContextBuilder {
@@ -256,6 +270,20 @@ struct ServiceContextBuilder {
   static consteval auto Config() {
     return config;
   };
+
+  static consteval auto GetDependencyGraph() {
+    return [&]<utempl::ConstexprString... names, typename... TTs, Options... Options>
+    (ComponentConfig<names, TTs, Options>...){
+      return DependencyGraph<DependencyGraphElement<TTs, 
+        []<utempl::ConstexprString name, typename T, ::cserver::Options OOptions>
+        (ComponentConfig<name, T, OOptions>) {
+          impl::DependencyInfoInjector<T, config, Ts...> injector;
+          injector.template Inject<name>();
+          return injector.GetDependencies();
+        }(Ts{})>...>{};
+    }(Ts{}...);
+  };
+
 
   static constexpr auto Run() -> void {
     []<utempl::ConstexprString... names, typename... TTs, Options... Options>
