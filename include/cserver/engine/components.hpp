@@ -223,13 +223,86 @@ public:
 
 } // namespace impl
 
-template <typename T, utempl::Tuple Dependencies>
+template <utempl::ConstexprString Name, utempl::Tuple Dependencies>
 struct DependencyGraphElement {};
 
 
 template <typename... Ts>
 struct DependencyGraph {
   static constexpr auto kValue = utempl::TypeList<Ts...>{};
+};
+
+namespace impl {
+
+template <typename T, std::size_t Size>
+struct CompileTimeStack {
+  std::array<std::optional<T>, Size> data{};
+  std::size_t current{};
+  inline constexpr auto Push(T value) {
+    if(this->current == Size) {
+      throw std::out_of_range{0};
+    };
+    this->data[current].emplace(std::move(value));
+    this->current++;
+  };
+  inline constexpr auto Pop() {
+    auto tmp = this->current;
+    this->current--;
+    return std::move(*this->data[tmp]);
+  };
+};
+
+template <typename T>
+struct RangeView {
+  T* beginIterator;
+  T* endIterator;
+  template <typename Self>
+  inline constexpr auto begin(this Self&& self) {
+    return std::forward<Self>(self).beginIterator;
+  };
+  template <typename Self>
+  inline constexpr auto end(this Self&& self) {
+    return std::forward<Self>(self).endIterator;
+  };
+  inline constexpr RangeView(std::ranges::range auto&& range) :
+    beginIterator(std::ranges::begin(range)),
+    endIterator(std::ranges::end(range)) {};
+};
+RangeView(std::ranges::range auto&& range) -> RangeView<std::remove_reference_t<decltype(*std::ranges::begin(range))>>;
+
+} // namespace impl
+
+template <utempl::ConstexprString... Names, utempl::Tuple... Dependencies>
+consteval auto TopologicalSort(const DependencyGraph<DependencyGraphElement<Names, Dependencies>...>&) {
+  const utempl::Tuple storage = {[&]<auto DDependencies>(utempl::Wrapper<DDependencies>) {
+    return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> std::array<std::size_t, utempl::kTupleSize<decltype(DDependencies)>> {
+      return {utempl::Find(utempl::Tuple{Names...}, Get<Is>(DDependencies))...};
+    }(std::make_index_sequence<utempl::kTupleSize<decltype(DDependencies)>>{});
+  }(utempl::Wrapper<Dependencies>{})...};
+  constexpr auto Size = utempl::kTupleSize<decltype(storage)>;
+  const std::array adj = [&]<std::size_t... Is>(std::index_sequence<Is...>){
+    return std::array{impl::RangeView{Get<Is>(storage)}...};
+  }(std::make_index_sequence<Size>{});
+  std::array<bool, Size> visited{};
+  constexpr auto ResultSize = sizeof...(Dependencies);
+  impl::CompileTimeStack<std::size_t, ResultSize> response{};
+  for(std::size_t i = 0; i < Size; i++) {
+    if(visited[i] == true) {
+      continue;
+    };
+    [&](this auto&& self, std::size_t v) -> void {
+      visited[v] = true;
+      for(const auto& element : adj[v]) {
+        if(!visited[element]) {
+          self(element);
+        };
+      };
+      response.Push(v);
+    }(i);
+  };
+  return utempl::Transform(std::move(response.data), [](auto&& data){
+    return *data;
+  });
 };
 
 
@@ -274,7 +347,7 @@ struct ServiceContextBuilder {
   static consteval auto GetDependencyGraph() {
     return [&]<utempl::ConstexprString... names, typename... Components, Options... Options>
     (ComponentConfig<names, Components, Options>...){
-      return DependencyGraph<DependencyGraphElement<Components, 
+      return DependencyGraph<DependencyGraphElement<names, 
         []<utempl::ConstexprString name, typename Component, ::cserver::Options OOptions>
         (ComponentConfig<name, Component, OOptions>) {
           impl::DependencyInfoInjector<Component, config, ComponentConfigs...> injector;
@@ -282,6 +355,14 @@ struct ServiceContextBuilder {
           return injector.GetDependencies();
         }(ComponentConfigs{})>...>{};
     }(ComponentConfigs{}...);
+  };
+
+  static consteval auto Sort() {
+    constexpr auto sorted = TopologicalSort(GetDependencyGraph());
+    return [&]<std::size_t... Is>(std::index_sequence<Is...>){
+      constexpr auto list = utempl::TypeList<ComponentConfigs...>{};
+      return ServiceContextBuilder<config, decltype(Get<sorted[Is]>(list))...>{};
+    }(std::index_sequence_for<ComponentConfigs...>{});
   };
 
 
