@@ -59,12 +59,8 @@ private:
   };
   template <typename Socket>
   inline auto ReadHeaders(Socket&& socket, auto&&...) const -> cserver::Task<server::http::HTTPResponse> {
-    boost::system::error_code ec;
     std::string serverResponse;
-    co_await boost::asio::async_read_until(socket, boost::asio::dynamic_buffer(serverResponse), "\r\n\r\n", boost::asio::redirect_error(boost::asio::use_awaitable, ec));
-    if(ec) {
-      throw BoostErrorWrapper{ec};
-    };
+    co_await boost::asio::async_read_until(socket, boost::asio::dynamic_buffer(serverResponse), "\r\n\r\n", boost::asio::use_awaitable);
     server::http::HTTPResponse response;
     std::istringstream responseStream(std::move(serverResponse));
     std::string httpVersion;
@@ -80,11 +76,7 @@ private:
   inline auto ReadBody(Socket&& socket, std::size_t length, auto&&...) const -> cserver::Task<std::string> {
     std::string response;
     response.reserve(length);
-    boost::system::error_code ec;
-    co_await boost::asio::async_read(socket, boost::asio::dynamic_buffer(response), boost::asio::transfer_at_least(length), boost::asio::redirect_error(boost::asio::use_awaitable, ec));
-    if(ec) {
-      throw BoostErrorWrapper{ec};
-    };
+    co_await boost::asio::async_read(socket, boost::asio::dynamic_buffer(response), boost::asio::transfer_at_least(length), boost::asio::use_awaitable);
     co_return response;
   };
   template <typename Socket>
@@ -96,7 +88,7 @@ private:
         break;
       };
       if(ec) {
-        throw BoostErrorWrapper{ec};
+        throw boost::system::error_code{ec};
       };
     };
     co_return response;

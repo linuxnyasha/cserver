@@ -208,7 +208,7 @@ public:
       return utempl::Tuple{};
     } else {
       if constexpr(requires{GetDependencies<I + 1, names...>();}) {
-        return GetDependencies<I + 1, names..., typename decltype(Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{}))::Type>();
+        return GetDependencies<I + 1, names..., Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{})>();
       } else {
         return utempl::Tuple{names..., Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{})};
       };

@@ -33,15 +33,18 @@ struct Server {
         return {};
       });
   };
-  template <utempl::ConstexprString name, typename T>
-  inline constexpr Server(utempl::Wrapper<name>, T& context) :
+  template <
+    utempl::ConstexprString name,
+    typename T,
+    std::size_t... Is>
+  inline constexpr Server(std::index_sequence<Is...>, utempl::Wrapper<name>, T& context) :
       taskProcessor(context.template FindComponent<TPName>()),
-      handlers{
-        [&]<auto... Is>(std::index_sequence<Is...>) -> utempl::Tuple<impl::GetTypeFromComponentConfig<Ts>&...> {
-          return {context.template FindComponent<Get<Is>(kNames)>()...};
-        }(std::index_sequence_for<Ts...>())
-      },
+      handlers{context.template FindComponent<Get<Is>(kNames)>()...},
       port(T::kConfig.template Get<name>().template Get<"port">()) {
+    
+  };
+  inline constexpr Server(auto name, auto& context) : 
+    Server(std::index_sequence_for<Ts...>{}, name, context) {
   };
   template<auto I, typename Socket>
   auto ProcessHandler(Socket&& socket, http::HTTPRequest request) -> Task<void> {

@@ -1,7 +1,6 @@
 #pragma once
 #include <cserver/server/http/http_response.hpp>
 #include <cserver/engine/coroutine.hpp>
-#include <cserver/utils/boost_error_wrapper.hpp>
 #include <boost/asio/ssl.hpp>
 
 namespace cserver::clients::http {
@@ -19,9 +18,8 @@ public:
       co_return false;
     };
     if(ec) {
-      throw BoostErrorWrapper{ec};
+      throw boost::system::error_code(ec);
     };
-
     this->body.resize(n);
     co_return true;
   };
