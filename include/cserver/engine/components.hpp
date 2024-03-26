@@ -274,15 +274,19 @@ RangeView(std::ranges::range auto&& range) -> RangeView<std::remove_reference_t<
 
 template <utempl::ConstexprString... Names, utempl::Tuple... Dependencies>
 consteval auto TopologicalSort(const DependencyGraph<DependencyGraphElement<Names, Dependencies>...>&) {
-  const utempl::Tuple storage = {[&]<auto DDependencies>(utempl::Wrapper<DDependencies>) {
-    return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> std::array<std::size_t, utempl::kTupleSize<decltype(DDependencies)>> {
-      return {utempl::Find(utempl::Tuple{Names...}, Get<Is>(DDependencies))...};
-    }(std::make_index_sequence<utempl::kTupleSize<decltype(DDependencies)>>{});
-  }(utempl::Wrapper<Dependencies>{})...};
+  constexpr utempl::Tuple names = {Names...};
+  constexpr utempl::Tuple storage = Map(utempl::Tuple{Dependencies...}, 
+                                          [&]<utempl::TupleLike Tuple>(Tuple&& tuple){
+                                            static constexpr auto Size = utempl::kTupleSize<Tuple>;
+                                            return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> std::array<std::size_t, Size> {
+                                              return {Find(names, Get<Is>(std::forward<Tuple>(tuple)))...};
+                                            }(std::make_index_sequence<Size>());
+                                          });
   constexpr auto Size = utempl::kTupleSize<decltype(storage)>;
-  const std::array adj = [&]<std::size_t... Is>(std::index_sequence<Is...>){
-    return std::array{impl::RangeView{Get<Is>(storage)}...};
-  }(std::make_index_sequence<Size>{});
+  const std::array adj = utempl::Map(storage, 
+                                    [](std::ranges::range auto& arg){
+                                      return impl::RangeView{arg};
+                                    }, utempl::kType<std::array<std::size_t, 0>>);
   std::array<bool, Size> visited{};
   constexpr auto ResultSize = sizeof...(Dependencies);
   impl::CompileTimeStack<std::size_t, ResultSize> response{};
@@ -300,7 +304,7 @@ consteval auto TopologicalSort(const DependencyGraph<DependencyGraphElement<Name
       response.Push(v);
     }(i);
   };
-  return utempl::Transform(std::move(response.data), [](auto&& data){
+  return utempl::Map(std::move(response.data), [](auto&& data){
     return *data;
   });
 };
