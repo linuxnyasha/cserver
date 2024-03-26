@@ -278,9 +278,11 @@ consteval auto TopologicalSort(const DependencyGraph<DependencyGraphElement<Name
   constexpr utempl::Tuple storage = Map(utempl::Tuple{Dependencies...}, 
                                           [&]<utempl::TupleLike Tuple>(Tuple&& tuple){
                                             static constexpr auto Size = utempl::kTupleSize<Tuple>;
-                                            return [&]<std::size_t... Is>(std::index_sequence<Is...>) -> std::array<std::size_t, Size> {
-                                              return {Find(names, Get<Is>(std::forward<Tuple>(tuple)))...};
-                                            }(std::make_index_sequence<Size>());
+                                            return utempl::Unpack(std::forward<Tuple>(tuple),
+                                              [&]<typename... Args>(Args&&... args) -> std::array<std::size_t, Size> {
+                                                return {Find(names, std::forward<Args>(args))...};
+                                              }
+                                            );
                                           });
   constexpr auto Size = utempl::kTupleSize<decltype(storage)>;
   const std::array adj = utempl::Map(storage, 
