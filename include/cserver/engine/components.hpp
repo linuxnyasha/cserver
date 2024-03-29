@@ -332,7 +332,7 @@ struct ServiceContextBuilder {
   static constexpr auto Run() -> void {
     []<utempl::ConstexprString... names, typename... TTs, Options... Options>
     (utempl::TypeList<ComponentConfig<names, TTs, Options>...>) {
-      ServiceContext<config, utempl::Tuple{names...}, utempl::Tuple{Options...}, TTs...> context;
+      static ServiceContext<config, utempl::Tuple{names...}, utempl::Tuple{Options...}, TTs...> context;
       context.Run();
       for(;;) {
         std::this_thread::sleep_for(std::chrono::minutes(1));
