@@ -43,7 +43,19 @@ struct HTTPHandlerBase {
     co_await stream.Close();
   };
   inline constexpr HTTPHandlerBase(auto, auto&) {};
-
+};
+template <typename T>
+struct HTTPHandlerAdder {
+  template <utempl::ConstexprString Name, Options Options>
+  static consteval auto Adder(const auto& context) {
+    return HTTPHandlerBase::template Adder<T, Name, Options>(context);
+  };
+};
+template <typename T>
+struct HTTPHandlerBaseWithAdder : HTTPHandlerBase, HTTPHandlerAdder<T> {
+  inline constexpr HTTPHandlerBaseWithAdder(auto name, auto& context) :
+      HTTPHandlerBase(name, context),
+      HTTPHandlerAdder<T>{} {};
 };
 
 } // namespace cserver::server::handlers
