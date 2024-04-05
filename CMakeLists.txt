@@ -19,7 +19,7 @@ target_include_directories(
   cserver
   INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(cserver INTERFACE utempl::utempl ${Boost_LIBRARIES} llhttp uring ${OPENSSL_LIBRARIES} )
+target_link_libraries(cserver INTERFACE utempl::utempl ${Boost_LIBRARIES} llhttp ${OPENSSL_LIBRARIES} )
 
 target_compile_features(cserver INTERFACE cxx_std_20)
 
