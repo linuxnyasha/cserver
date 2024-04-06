@@ -1,6 +1,5 @@
 #pragma once
-#include <cserver/engine/components.hpp>
-#include <cserver/engine/coroutine.hpp>
+#include <utempl/constexpr_string.hpp>
 #include <boost/asio.hpp>
 
 namespace cserver::engine::basic {
@@ -15,14 +14,6 @@ struct TaskProcessor {
       pool{} {
   };
 
-  template <utempl::ConstexprString name, Options Options, typename T>
-  static consteval auto Adder(const T& context) { 
-    constexpr std::size_t Count = T::kConfig.template Get<name>().template Get<"threadPoolSize">();
-    return context.TransformComponents(
-      [&](const ComponentConfig<name, TaskProcessor<>, Options>&) -> ComponentConfig<name, TaskProcessor<Count>, Options> {
-        return {};
-      });
-  };
   inline constexpr ~TaskProcessor() {
     for(auto& thread : this->pool) {
       thread.join();

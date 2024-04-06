@@ -1,8 +1,12 @@
 #pragma once
+#include <cserver/engine/basic/task_processor.hpp>
 #include <utempl/utils.hpp>
 #include <thread>
 
 namespace cserver {
+
+inline constexpr utempl::ConstexprString kBasicTaskProcessorName = "basicTaskProcessor";
+
 struct SeparatedComponent {};
 template <typename... Ts>
 struct Options : utempl::TypeList<Ts...> {};
@@ -64,8 +68,10 @@ struct ServiceContext {
   static constexpr auto kConfig = config;
   static constexpr auto kList = utempl::TypeList<Ts...>{};
   static constexpr auto kThreadsCount = config.template Get<"threads">();
+  engine::basic::TaskProcessor<kThreadsCount> taskProcessor;
   utempl::Tuple<Ts...> storage;
   inline constexpr ServiceContext() :
+      taskProcessor{utempl::Wrapper<utempl::ConstexprString{kBasicTaskProcessorName}>{}, *this},
       storage{
         [&]<auto... Is>(std::index_sequence<Is...>) -> utempl::Tuple<Ts...> {
           return {[&]<auto I>(utempl::Wrapper<I>) {
@@ -88,6 +94,10 @@ struct ServiceContext {
   inline constexpr auto FindComponent() -> auto& {
     constexpr auto I = utempl::Find(names, name);
     return Get<I>(this->storage);
+  };
+  template <>
+  inline constexpr auto FindComponent<kBasicTaskProcessorName>() -> auto& {
+    return this->taskProcessor;
   };
   template <typename T>
   inline constexpr auto FindComponent() -> T& {
@@ -159,8 +169,12 @@ struct DependencyInfoInjector {
 private:
   template <utempl::ConstexprString name, utempl::ConstexprString... names, typename... TTs, Options... Options>
   static consteval auto FindComponentTypeImpl(ComponentConfig<names, TTs, Options>...) {
-    constexpr auto I = utempl::Find(utempl::Tuple{std::string_view{names}...}, std::string_view{name});
-    return [] -> decltype(utempl::Get<I>(utempl::TypeList<TTs...>{})) {}();
+    if constexpr(name == kBasicTaskProcessorName) {
+      return [] -> engine::basic::TaskProcessor<config.template Get<"threads">()> {}();
+    } else {
+      constexpr auto I = utempl::Find(utempl::Tuple{std::string_view{names}...}, std::string_view{name});
+      return [] -> decltype(utempl::Get<I>(utempl::TypeList<TTs...>{})) {}();
+    };
   };
 public:
   template <utempl::ConstexprString name>
@@ -187,6 +201,7 @@ public:
   >
   static constexpr auto FindComponent() -> FindComponentType<name>&;
 
+
   template <
     typename T,
     typename...,
@@ -208,9 +223,19 @@ public:
       return utempl::Tuple{};
     } else {
       if constexpr(requires{GetDependencies<I + 1, names...>();}) {
-        return GetDependencies<I + 1, names..., Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{})>();
+        constexpr auto name = Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});
+        if constexpr(name == kBasicTaskProcessorName) {
+          return GetDependencies<I + 1, names...>();
+        } else {
+          return GetDependencies<I + 1, names..., name>();
+        };
       } else {
-        return utempl::Tuple{names..., Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{})};
+        constexpr auto name = Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});
+        if constexpr(name == kBasicTaskProcessorName) {
+          return utempl::Tuple{names...};
+        } else {
+          return utempl::Tuple{names..., name};
+        };
       };
     };
   };
@@ -339,13 +364,16 @@ struct ServiceContextBuilder {
   };
   template <utempl::ConstexprString name>
   static consteval auto FindComponent() {
-    return []<typename... TTs, utempl::ConstexprString... names, Options... Options>
-    (const ServiceContextBuilder<config, ComponentConfig<names, TTs, Options>...>&) 
-        -> decltype(utempl::Get<Find(utempl::Tuple{names...}, name)>(utempl::TypeList<TTs...>{})) {
-      std::unreachable();
-    }(ServiceContextBuilder<config, ComponentConfigs...>{});
+    if constexpr(name == kBasicTaskProcessorName) {
+      return [] -> engine::basic::TaskProcessor<config.template Get<"threads">()> {}();
+    } else {
+      return []<typename... TTs, utempl::ConstexprString... names, Options... Options>
+      (const ServiceContextBuilder<config, ComponentConfig<names, TTs, Options>...>&) 
+          -> decltype(utempl::Get<Find(utempl::Tuple{names...}, name)>(utempl::TypeList<TTs...>{})) {
+        std::unreachable();
+      }(ServiceContextBuilder<config, ComponentConfigs...>{});
+    };
   };
-
   static consteval auto Config() {
     return config;
   };
