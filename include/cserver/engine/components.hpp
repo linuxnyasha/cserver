@@ -1,6 +1,5 @@
 #pragma once
 #include <utempl/utils.hpp>
-#include <utempl/loopholes/counter.hpp>
 #include <thread>
 
 namespace cserver {
@@ -100,6 +99,49 @@ struct ServiceContext {
 
 namespace impl {
 
+namespace loopholes {
+
+template <auto I>
+struct Getter {
+  friend constexpr auto Magic(Getter<I>);
+};
+template <auto I, auto Value = 0>
+struct Injector {
+  friend constexpr auto Magic(Getter<I>) {return Value;};
+};
+
+
+template <auto I, typename...>
+concept Injected = requires{Magic(Getter<I>{});};
+
+template <typename Tag, auto Value>
+struct TagWithTalue {};
+
+
+template <auto I = 0, typename Tag, typename... Ts, auto = Injector<TagWithTalue<Tag, I>{}>{}>
+constexpr auto CounterImpl(...) {
+  return I;
+};
+
+template <auto I = 0, typename Tag, typename... Ts>
+consteval auto CounterImpl(std::size_t arg) requires Injected<TagWithTalue<Tag, I>{}, Ts...> {
+  return CounterImpl<I + 1, Tag, Ts...>(arg);
+};
+
+
+template <
+  typename Tag,
+  typename... Ts,
+  auto R = CounterImpl<0, Tag, Ts...>(std::size_t{})
+>
+consteval auto Counter(auto...) {
+  return R;
+};
+
+
+} // namespace loopholes
+
+
 template <typename Current, std::size_t I>
 struct DependencyInfoKey {};
 
@@ -134,8 +176,8 @@ public:
   template <
     utempl::ConstexprString name,
     typename...,
-    std::size_t I = utempl::loopholes::Counter<Current, utempl::Wrapper<name>>(),
-    auto = utempl::loopholes::Injector<
+    std::size_t I = loopholes::Counter<Current, utempl::Wrapper<name>>(),
+    auto = loopholes::Injector<
       DependencyInfoKey<
         Current,
         I
@@ -144,11 +186,12 @@ public:
     >{}
   >
   static constexpr auto FindComponent() -> FindComponentType<name>&;
+
   template <
     typename T,
     typename...,
-    std::size_t I = utempl::loopholes::Counter<Current, utempl::Wrapper<FindComponentName<T>>>(),
-    auto = utempl::loopholes::Injector<
+    std::size_t I = loopholes::Counter<Current, utempl::Wrapper<FindComponentName<T>>>(),
+    auto = loopholes::Injector<
       DependencyInfoKey<
         Current,
         I
@@ -160,14 +203,14 @@ public:
 
   template <std::size_t I = 0, utempl::ConstexprString... names>
   static consteval auto GetDependencies() requires (I == 0 || 
-      requires {Magic(utempl::loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
-    if constexpr(I == 0 && !requires {Magic(utempl::loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
+      requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
+    if constexpr(I == 0 && !requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
       return utempl::Tuple{};
     } else {
       if constexpr(requires{GetDependencies<I + 1, names...>();}) {
-        return GetDependencies<I + 1, names..., Magic(utempl::loopholes::Getter<DependencyInfoKey<Current, I>{}>{})>();
+        return GetDependencies<I + 1, names..., Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{})>();
       } else {
-        return utempl::Tuple{names..., Magic(utempl::loopholes::Getter<DependencyInfoKey<Current, I>{}>{})};
+        return utempl::Tuple{names..., Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{})};
       };
     };
   };
