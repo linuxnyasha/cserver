@@ -306,9 +306,9 @@ consteval auto TopologicalSort(const DependencyGraph<DependencyGraphElement<Name
       response.Push(v);
     }(i);
   };
-  return (std::move(response.data) | utempl::Map([](auto&& data){
+  return utempl::Map(std::move(response.data), [](auto&& data){
     return *data;
-  }) | utempl::Reverse())();
+  });
 };
 
 
