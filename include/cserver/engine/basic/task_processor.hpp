@@ -15,6 +15,7 @@ struct TaskProcessor {
   };
 
   inline constexpr ~TaskProcessor() {
+    this->ioContext.stop();
     for(auto& thread : this->pool) {
       thread.join();
     };

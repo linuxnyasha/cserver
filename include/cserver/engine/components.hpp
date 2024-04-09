@@ -82,6 +82,7 @@ struct ServiceContext {
         }(std::index_sequence_for<Ts...>())
       } {};
   inline constexpr auto Run() {
+    this->taskProcessor.Run();
     [&]<auto... Is>(std::index_sequence<Is...>) {
       ([](auto& component){
         if constexpr(requires{component.Run();}) {
@@ -399,16 +400,19 @@ struct ServiceContextBuilder {
     }(std::index_sequence_for<ComponentConfigs...>{});
   };
 
+  static constexpr auto GetServiceContext() {
+    return []<utempl::ConstexprString... names, typename... TTs, Options... Options>
+    (utempl::TypeList<ComponentConfig<names, TTs, Options>...>) {
+      return ServiceContext<config, utempl::Tuple{names...}, utempl::Tuple{Options...}, TTs...>{};
+    }(utempl::TypeList<ComponentConfigs...>{});
+  };
 
   static constexpr auto Run() -> void {
-    []<utempl::ConstexprString... names, typename... TTs, Options... Options>
-    (utempl::TypeList<ComponentConfig<names, TTs, Options>...>) {
-      static ServiceContext<config, utempl::Tuple{names...}, utempl::Tuple{Options...}, TTs...> context;
-      context.Run();
-      for(;;) {
-        std::this_thread::sleep_for(std::chrono::minutes(1));
-      };
-    }(utempl::TypeList<ComponentConfigs...>{});
+    static auto context = GetServiceContext();
+    context.Run();
+    for(;;) {
+      std::this_thread::sleep_for(std::chrono::minutes(1));
+    };
   };
 };
 } // namespace cserver
