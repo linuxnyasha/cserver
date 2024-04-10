@@ -1,13 +1,14 @@
 #pragma once
 #include <utempl/constexpr_string.hpp>
 #include <boost/asio.hpp>
+#include <thread>
 
 namespace cserver::engine::basic {
 
 template <std::size_t Size = 0>
 struct TaskProcessor {
   boost::asio::io_context ioContext;
-  std::array<std::thread, Size> pool;
+  std::array<std::optional<std::thread>, Size> pool;
   static constexpr utempl::ConstexprString kName = "basicTaskProcessor";
   inline constexpr TaskProcessor(auto, auto&) :
       ioContext{},
@@ -15,16 +16,22 @@ struct TaskProcessor {
   };
 
   inline constexpr ~TaskProcessor() {
-    this->ioContext.stop();
     for(auto& thread : this->pool) {
-      thread.join();
+      if(thread && thread->joinable()) {
+        thread->join();
+      };
     };
   };
 
   inline auto Run() {
     for(auto& thread : this->pool) {
-      thread = std::thread([&]{
-        boost::asio::executor_work_guard<decltype(this->ioContext.get_executor())> guard{this->ioContext.get_executor()};
+      if(this->ioContext.stopped()) {
+        return;
+      };
+      thread = std::jthread([&]{
+        if(this->ioContext.stopped()) {
+          return;
+        };
         this->ioContext.run();
       });
     };
