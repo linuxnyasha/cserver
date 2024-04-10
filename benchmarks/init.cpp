@@ -87,6 +87,7 @@ auto BMInitialise(benchmark::State& state) {
   for(auto _  : state) {
     auto* ptr = new (context) ServiceContextType{};
     ptr->Run();
+    ptr->FindComponent<cserver::kBasicTaskProcessorName>().ioContext.run();
     state.PauseTiming();
     ptr->~ServiceContextType();
     state.ResumeTiming();
