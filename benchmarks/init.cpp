@@ -93,7 +93,31 @@ auto BMInitialise(benchmark::State& state) {
     state.ResumeTiming();
   };
 };
+auto BMInitialiseWithoutSort(benchmark::State& state) {
+  using Builder = decltype(cserver::ServiceContextBuilder{}
+      .AppendConfigParam<"threads", 8>()
+      .Append<SomeComponent1>()
+      .Append<SomeComponent2>()
+      .Append<SomeComponent3>()
+      .Append<SomeComponent4>()
+      .Append<SomeComponent5>()
+      .Append<SomeComponent6>()
+      .Append<SomeComponent7>()
+      .Append<SomeComponent8>());
+  using ServiceContextType = decltype(Builder::GetServiceContext());
+  alignas(ServiceContextType) std::byte context[sizeof(ServiceContextType)];
+  for(auto _  : state) {
+    auto* ptr = new (context) ServiceContextType{};
+    ptr->Run();
+    ptr->FindComponent<cserver::kBasicTaskProcessorName>().ioContext.run();
+    state.PauseTiming();
+    ptr->~ServiceContextType();
+    state.ResumeTiming();
+  };
+};
+
 
 BENCHMARK(BMInitialise);
+BENCHMARK(BMInitialiseWithoutSort);
 
 BENCHMARK_MAIN();
