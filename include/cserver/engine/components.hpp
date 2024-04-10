@@ -122,23 +122,24 @@ struct AsyncConditionVariable {
 template <utempl::Tuple DependencyGraph, typename T>
 inline constexpr auto InitComponents(T& ccontext) -> void {
   static auto& context = ccontext;
-  static auto& ioContext = context.template FindComponent<kBasicTaskProcessorName>().ioContext;
+  static auto& taskProcessor = context.template FindComponent<kBasicTaskProcessorName>();
+  static auto& ioContext = taskProcessor.ioContext;
   static utempl::Tuple inited = TransformDependencyGraphToInited<AsyncConditionVariable, DependencyGraph>(ioContext); 
+  auto work = make_work_guard(ioContext);
   []<std::size_t... Is>(std::index_sequence<Is...>){
-    (boost::asio::co_spawn(ioContext, []<auto I>(utempl::Wrapper<I>) -> cserver::Task<> {
-      auto& dependencies = Get<I>(inited);
+    (boost::asio::co_spawn(ioContext, []() -> cserver::Task<> {
+      auto& dependencies = Get<Is>(inited);
       for(auto* flag : dependencies) {
         co_await flag->AsyncWait();
       };
-      Get<I>(context.storage).emplace(utempl::Wrapper<Get<I>(T::kNames)>{}, context);
-      auto& componentInitFlag = GetInitFlagFor<AsyncConditionVariable, I>(ioContext);
+      Get<Is>(context.storage).emplace(utempl::Wrapper<Get<Is>(T::kNames)>{}, context);
+      auto& componentInitFlag = GetInitFlagFor<AsyncConditionVariable, Is>(ioContext);
       componentInitFlag.NotifyAll();
-      if constexpr(requires{Get<I>(context.storage)->Run();}) {
-        Get<I>(context.storage)->Run();
+      if constexpr(requires{Get<Is>(context.storage)->Run();}) {
+        Get<Is>(context.storage)->Run();
       };
-    }(utempl::Wrapper<Is>{}), boost::asio::detached), ...);
+    }(), boost::asio::detached), ...);
   }(std::make_index_sequence<utempl::kTupleSize<decltype(DependencyGraph)>>());
-
 };
 
 } // namespace impl
@@ -156,8 +157,8 @@ struct ServiceContext {
       ,storage{} {
   };
   inline constexpr auto Run() {
-    this->taskProcessor.Run();
     impl::InitComponents<DependencyGraph>(*this);
+    this->taskProcessor.Run();
   };
   template <utempl::ConstexprString name>
   inline constexpr auto FindComponent() -> auto& {

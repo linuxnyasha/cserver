@@ -4,6 +4,7 @@
 #include <cserver/server/http/http_response.hpp>
 #include <cserver/engine/coroutine.hpp>
 #include <cserver/server/http/http_stream.hpp>
+#include <cserver/components/work_guard.hpp>
 #include <boost/asio.hpp>
 
 
@@ -11,7 +12,7 @@ namespace cserver::server::server {
 
 
 template <utempl::ConstexprString TPName = "basicTaskProcessor", typename TaskProcessor = int, typename... Ts>
-struct Server {
+struct Server : StopBlocker {
   TaskProcessor& taskProcessor;
   utempl::Tuple<impl::GetTypeFromComponentConfig<Ts>&...> handlers;
   static constexpr utempl::ConstexprString kName = "server";
@@ -34,13 +35,14 @@ struct Server {
       });
   };
   template <
-    utempl::ConstexprString name,
+    utempl::ConstexprString Name,
     typename T,
     std::size_t... Is>
-  inline constexpr Server(std::index_sequence<Is...>, utempl::Wrapper<name>, T& context) :
+  inline constexpr Server(std::index_sequence<Is...>, utempl::Wrapper<Name> name, T& context) :
+      StopBlocker(name, context),
       taskProcessor(context.template FindComponent<TPName>()),
       handlers{context.template FindComponent<Get<Is>(kNames)>()...},
-      port(T::kConfig.template Get<name>().template Get<"port">()) {
+      port(T::kConfig.template Get<Name>().template Get<"port">()) {
     
   };
   inline constexpr Server(auto name, auto& context) : 
@@ -69,11 +71,11 @@ struct Server {
     http::HTTPRequest request = http::HTTPRequestParser{buffer};
     bool flag = false;
     co_await [&]<auto... Is>(std::index_sequence<Is...>) -> cserver::Task<void> {
-      (co_await [&]<auto I>(utempl::Wrapper<I>) -> cserver::Task<void> {
-        if(request.url.path().substr(0, Get<I>(kPaths).size()) == Get<I>(kPaths)) {
-          co_await this->ProcessHandler<I>(std::move(socket), std::move(request));
+      (co_await [&] -> cserver::Task<void> {
+        if(request.url.path().substr(0, Get<Is>(kPaths).size()) == Get<Is>(kPaths)) {
+          co_await this->ProcessHandler<Is>(std::move(socket), std::move(request));
         };
-      }(utempl::Wrapper<Is>{}), ...);
+      }(), ...);
     }(std::index_sequence_for<Ts...>());
     constexpr std::string_view error404 = "HTTP/1.1 404 Not Found\r\n"
                                           "Content-Length: 0\r\n"
