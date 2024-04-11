@@ -9,9 +9,8 @@ struct SomeComponent : public cserver::server::handlers::HTTPHandlerBaseWithAdde
   inline constexpr SomeComponent(auto name, auto& context) :
       HTTPHandlerBaseWithAdder(name, context) {};
  
-  inline auto HandleRequestThrow(const cserver::server::http::HTTPRequest& request,
-                                 cserver::server::http::HTTPResponse&) -> cserver::Task<std::string> {
-    co_return request.url.data();
+  inline auto HandleRequestThrow(const cserver::server::http::HTTPRequest& request) -> cserver::Task<cserver::server::http::HTTPResponse> {
+    co_return cserver::server::http::HTTPResponse{.body = request.url.data()};
   };
 };
  

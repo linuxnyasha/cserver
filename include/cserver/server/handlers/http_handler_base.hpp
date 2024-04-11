@@ -15,19 +15,17 @@ struct HTTPHandlerBase {
     });
   };
   template <typename Self>
-  inline auto HandleRequest(this Self&& self, cserver::server::http::HTTPRequest&& request,
-                            cserver::server::http::HTTPResponse& response) -> Task<std::string> requires requires{self.HandleRequestThrow(std::move(request), response);} {
+  inline auto HandleRequest(this Self&& self, http::HTTPRequest&& request
+                            ) -> Task<http::HTTPResponse> requires requires{self.HandleRequestThrow(std::move(request));} {
     using T = std::remove_cvref_t<Self>;
     try {
-      co_return co_await std::forward<Self>(self).HandleRequestThrow(std::move(request), response);
+      co_return co_await std::forward<Self>(self).HandleRequestThrow(std::move(request));
     } catch(const std::exception& err) {
       fmt::println("Error in handler with default name {}: {}", T::kName, err.what());
     } catch(...) {
       fmt::println("Error in handler with default name {}: Unknown Error", T::kName);
     };
-    response.statusCode = 500;
-    response.statusMessage = "Internal Server Error";
-    co_return "Internal Server Error";
+    co_return http::HTTPResponse{.statusCode = 500, .statusMessage = "Internal Server Error", .body = "Internal Server Error"};
   };
   template <typename Self>
   inline auto HandleRequestStream(this Self&& self, cserver::server::http::HTTPRequest&& request,
