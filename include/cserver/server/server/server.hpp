@@ -55,8 +55,7 @@ struct Server : StopBlocker {
       co_await Get<I>(this->handlers).HandleRequestStream(std::move(request), stream);
       co_return;
     } else {
-      http::HTTPResponse response{};
-      response.body = co_await Get<I>(this->handlers).HandleRequest(std::move(request), response);
+      http::HTTPResponse response = co_await Get<I>(this->handlers).HandleRequest(std::move(request));
       response.headers["Content-Length"] = std::to_string(response.body.size());
       response.headers["Server"] = "cserver/1";
       auto data = response.ToString();

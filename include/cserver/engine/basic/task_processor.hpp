@@ -28,7 +28,7 @@ struct TaskProcessor {
       if(this->ioContext.stopped()) {
         return;
       };
-      thread = std::jthread([&]{
+      thread = std::thread([&]{
         if(this->ioContext.stopped()) {
           return;
         };
