@@ -3,10 +3,11 @@
 
 namespace cserver {
 
+
 struct StopBlocker {
-  boost::asio::io_service::work work;
+  boost::asio::io_context::work guard;
   inline constexpr StopBlocker(auto, auto& context) : 
-      work(context.template FindComponent<kBasicTaskProcessorName>().ioContext) {};
+      guard(context.template FindComponent<kBasicTaskProcessorName>().ioContext) {};
 };
 
 } // namespace cserver
