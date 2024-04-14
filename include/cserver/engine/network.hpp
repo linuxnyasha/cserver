@@ -64,8 +64,36 @@ public:
   template <typename Buffer, typename Match>
   friend inline constexpr auto AsyncReadUntil(TcpSocket& socket, Buffer buffer, Match match);
 };
+class TcpEntry;
+
+class TcpEndpoint {
+  boost::asio::ip::tcp::endpoint impl;
+  inline constexpr TcpEndpoint(boost::asio::ip::tcp::endpoint impl) : impl(std::move(impl)) {};
+public:
+  friend TcpEntry;
+};
 
 
+class TcpEntry {
+  boost::asio::ip::tcp::resolver::results_type::value_type impl;
+public:
+  inline constexpr TcpEntry() = default;
+  inline constexpr TcpEntry(const TcpEndpoint& ep,
+                            std::string_view host,
+                            std::string_view service) : impl(ep.impl, host, service) {};
+  inline constexpr auto Endpoint() -> TcpEndpoint {
+    return {this->impl.endpoint()};
+  };
+  inline constexpr auto HostName() -> std::string {
+    return this->impl.host_name();
+  };
+  inline constexpr auto ServiceName() -> std::string {
+    return this->impl.service_name();
+  };
+  inline constexpr operator TcpEndpoint() {
+    return {this->impl};
+  };
+};
 
 
 class TcpResolver {
