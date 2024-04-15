@@ -114,24 +114,24 @@ inline constexpr auto DynamicBuffer(T&& arg) -> decltype(boost::asio::dynamic_bu
 };
 
 
-template <typename Buffer>
-inline constexpr auto AsyncWrite(TcpSocket& socket, Buffer buffer) -> Task<> {
-  return boost::asio::async_write(socket.impl, std::move(buffer), boost::asio::use_awaitable);
+template <typename Socket, typename Buffer>
+inline constexpr auto AsyncWrite(Socket&& socket, Buffer buffer) -> Task<> {
+  return boost::asio::async_write(std::forward<Socket>(socket).impl, std::move(buffer), boost::asio::use_awaitable);
 };
 
-template <typename Buffer, typename CompletionCondition>
-inline constexpr auto AsyncWrite(TcpSocket& socket, Buffer buffer, CompletionCondition completion) -> Task<> {
-  return boost::asio::async_write(socket.impl, std::move(buffer), std::move(completion), boost::asio::use_awaitable);
+template <typename Socket, typename Buffer, typename CompletionCondition>
+inline constexpr auto AsyncWrite(Socket&& socket, Buffer buffer, CompletionCondition completion) -> Task<> {
+  return boost::asio::async_write(std::forward<Socket>(socket).impl, std::move(buffer), std::move(completion), boost::asio::use_awaitable);
 };
 
-template <typename Buffer>
-inline constexpr auto AsyncRead(TcpSocket& socket, Buffer buffer) -> Task<> {
-  return boost::asio::async_read(socket.impl, std::move(buffer), boost::asio::use_awaitable);
+template <typename Socket, typename Buffer>
+inline constexpr auto AsyncRead(Socket&& socket, Buffer buffer) -> Task<> {
+  return boost::asio::async_read(std::forward<Socket>(socket).impl, std::move(buffer), boost::asio::use_awaitable);
 };
 
-template <typename Buffer, typename CompletionCondition>
-inline constexpr auto AsyncRead(TcpSocket& socket, Buffer buffer, CompletionCondition completion) -> Task<> {
-  return boost::asio::async_read(socket.impl, std::move(buffer), std::move(completion), boost::asio::use_awaitable);
+template <typename Socket, typename Buffer, typename CompletionCondition>
+inline constexpr auto AsyncRead(Socket&& socket, Buffer buffer, CompletionCondition completion) -> Task<> {
+  return boost::asio::async_read(std::forward<Socket>(socket).impl, std::move(buffer), std::move(completion), boost::asio::use_awaitable);
 };
 
 template <typename Buffer, typename Match>
