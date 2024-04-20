@@ -2,3 +2,9 @@
 
 include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
 check_required_components("@PROJECT_NAME@")
+
+try_compile(loopholes_body_inject
+  SOURCES "${CMAKE_CURRENT_LIST_DIR}/check.cpp")
+if(NOT loopholes_body_inject)
+  message(FATAL_ERROR "The Compiler Doesn't Support Retrieval Of Information Via Loopholes. If You Are Using gcc, Enable Optimizations.")
+endif()

@@ -42,12 +42,13 @@ configure_package_config_file(
   ${CMAKE_INSTALL_DATAROOTDIR}/cserver/cmake)
 
 install(EXPORT cserverTargets
-        FILE cserverTargets.cmake
+        FILE cserverTargets.cmake 
         NAMESPACE cserver::
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/cserver/cmake)
 
 install(FILES "${PROJECT_BINARY_DIR}/cserverConfig.cmake"
               "${PROJECT_BINARY_DIR}/cserverConfigVersion.cmake"
+              "${PROJECT_BINARY_DIR}/cmake/check.cpp"
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/cserver/cmake)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cserver DESTINATION include)
