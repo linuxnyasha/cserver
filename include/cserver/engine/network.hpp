@@ -134,9 +134,9 @@ inline constexpr auto AsyncRead(Socket&& socket, Buffer buffer, CompletionCondit
   return boost::asio::async_read(std::forward<Socket>(socket).impl, std::move(buffer), std::move(completion), boost::asio::use_awaitable);
 };
 
-template <typename Buffer, typename Match>
-inline constexpr auto AsyncReadUntil(TcpSocket& socket, Buffer buffer, Match match) -> Task<> {
-  return boost::asio::async_read_until(socket.impl, std::move(buffer), std::move(match), boost::asio::use_awaitable);
+template <typename Socket, typename Buffer, typename Match>
+inline constexpr auto AsyncReadUntil(Socket&& socket, Buffer buffer, Match match) -> Task<> {
+  return boost::asio::async_read_until(std::forward<Socket>(socket).impl, std::move(buffer), std::move(match), boost::asio::use_awaitable);
 };
 
 inline constexpr auto TransferAll() {
