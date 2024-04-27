@@ -53,7 +53,7 @@ struct SomeComponent6 {
 struct SomeComponent7 {
   SomeComponent4& first;
   SomeComponent6& second;
-  static constexpr utempl::ConstexprString kName = "6";
+  static constexpr utempl::ConstexprString kName = "7";
   constexpr SomeComponent7(auto, auto& context) : 
       first(context.template FindComponent<"4">()),
       second(context.template FindComponent<"6">()) {};
@@ -63,7 +63,7 @@ struct SomeComponent7 {
 struct SomeComponent8 {
   SomeComponent3& first;
   SomeComponent5& second;
-  static constexpr utempl::ConstexprString kName = "6";
+  static constexpr utempl::ConstexprString kName = "8";
   constexpr SomeComponent8(auto, auto& context) : 
       first(context.template FindComponent<"3">()),
       second(context.template FindComponent<"5">()) {};
