@@ -15,7 +15,7 @@ struct TaskProcessor {
       pool{} {
   };
 
-  inline constexpr ~TaskProcessor() {
+  inline ~TaskProcessor() {
     for(auto& thread : this->pool) {
       if(thread && thread->joinable()) {
         thread->join();

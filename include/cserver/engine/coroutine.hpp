@@ -61,14 +61,14 @@ struct awaitable_frame_base<any_io_executor> {
 public:
   using Executor = any_io_executor;
 #if !defined(BOOST_ASIO_DISABLE_AWAITABLE_FRAME_RECYCLING)
-  auto constexpr operator new(std::size_t size) -> void* {
+  inline auto operator new(std::size_t size) -> void* {
     return boost::asio::detail::thread_info_base::allocate(
         boost::asio::detail::thread_info_base::awaitable_frame_tag(),
         boost::asio::detail::thread_context::top_of_thread_call_stack(),
         size);
   };
 
-  inline constexpr auto operator delete(void* pointer, std::size_t size) -> void {
+  inline auto operator delete(void* pointer, std::size_t size) -> void {
     boost::asio::detail::thread_info_base::deallocate(
         boost::asio::detail::thread_info_base::awaitable_frame_tag(),
         boost::asio::detail::thread_context::top_of_thread_call_stack(),
@@ -99,7 +99,7 @@ public:
     return Result{this};
   };
 
-  inline constexpr auto set_except(std::exception_ptr e) noexcept -> void {
+  inline auto set_except(std::exception_ptr e) noexcept -> void {
     pending_exception_ = e;
   };
 
@@ -170,7 +170,7 @@ public:
 
       inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {};
 
-      inline constexpr auto await_resume() const noexcept {
+      inline auto await_resume() const noexcept {
         return this_->attached_thread_->get_executor();
       };
     };
