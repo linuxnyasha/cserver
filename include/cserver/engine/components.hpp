@@ -2,7 +2,6 @@
 #include <cserver/engine/basic/task_processor.hpp>
 #include <cserver/engine/coroutine.hpp>
 #include <utempl/utils.hpp>
-#include <thread>
 
 namespace cserver {
 
@@ -73,14 +72,12 @@ inline constexpr auto GetInitFlagFor(auto&... args) -> InitFlag& {
 };
 
 template <typename InitFlag, utempl::Tuple Tuple>
-inline constexpr auto TransformDependencyGraphToInited(auto&&... args) {
-  return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-    return utempl::Tuple{[&]<auto Array>(utempl::Wrapper<Array>){
-      return [&]<std::size_t... IIs>(std::index_sequence<IIs...>){
-        return std::array<InitFlag*, Array.size()>{&GetInitFlagFor<InitFlag, Array[IIs]>(args...)...};
-      }(std::make_index_sequence<Array.size()>());
-    }(utempl::Wrapper<Get<Is>(Tuple)>{})...};
-  }(std::make_index_sequence<utempl::kTupleSize<decltype(Tuple)>>());
+constexpr auto TransformDependencyGraphToTupleWithDependenciesToInitedFlagChanges(auto&&... args) {
+  return utempl::Map(utempl::PackConstexprWrapper<Tuple>(), [&]<auto Array>(utempl::Wrapper<Array>) {
+    return utempl::Map(utempl::PackConstexprWrapper<Array, utempl::Tuple<>>(), [&](auto elem) {
+      return &GetInitFlagFor<InitFlag, static_cast<std::size_t>(elem)>(args...);
+    }, utempl::kType<std::array<InitFlag*, Array.size()>>);
+  });
 };
 
 struct AsyncConditionVariable {
@@ -124,7 +121,7 @@ inline constexpr auto InitComponents(T& ccontext) -> void {
   static auto& context = ccontext;
   static auto& taskProcessor = context.template FindComponent<kBasicTaskProcessorName>();
   static auto& ioContext = taskProcessor.ioContext;
-  static utempl::Tuple inited = TransformDependencyGraphToInited<AsyncConditionVariable, DependencyGraph>(ioContext); 
+  static utempl::Tuple inited = TransformDependencyGraphToTupleWithDependenciesToInitedFlagChanges<AsyncConditionVariable, DependencyGraph>(ioContext); 
   auto work = make_work_guard(ioContext);
   []<std::size_t... Is>(std::index_sequence<Is...>){
     (boost::asio::co_spawn(ioContext, []() -> cserver::Task<> {
