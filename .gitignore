@@ -1,0 +1,13 @@
+.cache
+CMakeFiles
+.ninja_deps
+cserver_tests*
+examples/output
+.ninja_log
+CMakeCache.txt
+CTestTestfile.cmake
+build.ninja
+cmake_install.cmake
+compile_commands.json
+cserverConfig.cmake
+cserverConfigVersion.cmake
