@@ -2,6 +2,7 @@
 #include <cserver/engine/basic/task_processor.hpp>
 #include <cserver/engine/coroutine.hpp>
 #include <utempl/utils.hpp>
+#include <utempl/loopholes/counter.hpp>
 
 namespace cserver {
 
@@ -176,48 +177,6 @@ struct ServiceContext {
 
 namespace impl {
 
-namespace loopholes {
-
-template <auto I>
-struct Getter {
-  friend constexpr auto Magic(Getter<I>);
-};
-template <auto I, auto Value = 0>
-struct Injector {
-  friend constexpr auto Magic(Getter<I>) {return Value;};
-};
-
-
-template <auto I, typename...>
-concept Injected = requires{Magic(Getter<I>{});};
-
-template <typename Tag, auto Value>
-struct TagWithTalue {};
-
-
-template <auto I = 0, typename Tag, typename... Ts, auto = Injector<TagWithTalue<Tag, I>{}>{}>
-constexpr auto CounterImpl(...) {
-  return I;
-};
-
-template <auto I = 0, typename Tag, typename... Ts>
-consteval auto CounterImpl(std::size_t arg) requires Injected<TagWithTalue<Tag, I>{}, Ts...> {
-  return CounterImpl<I + 1, Tag, Ts...>(arg);
-};
-
-
-template <
-  typename Tag,
-  typename... Ts,
-  auto R = CounterImpl<0, Tag, Ts...>(std::size_t{})
->
-consteval auto Counter(auto...) {
-  return R;
-};
-
-
-} // namespace loopholes
-
 
 template <typename Current, std::size_t I>
 struct DependencyInfoKey {};
@@ -257,8 +216,8 @@ public:
   template <
     utempl::ConstexprString name,
     typename...,
-    std::size_t I = loopholes::Counter<Current, utempl::Wrapper<name>>(),
-    auto = loopholes::Injector<
+    std::size_t I = utempl::loopholes::Counter<Current, utempl::Wrapper<name>>(),
+    auto = utempl::loopholes::Injector<
       DependencyInfoKey<
         Current,
         I
@@ -272,8 +231,8 @@ public:
   template <
     typename T,
     typename...,
-    std::size_t I = loopholes::Counter<Current, utempl::Wrapper<FindComponentName<T>>>(),
-    auto = loopholes::Injector<
+    std::size_t I = utempl::loopholes::Counter<Current, utempl::Wrapper<FindComponentName<T>>>(),
+    auto = utempl::loopholes::Injector<
       DependencyInfoKey<
         Current,
         I
@@ -282,31 +241,20 @@ public:
     >{}
   >
   static constexpr auto FindComponent() -> T&;
-
-  template <std::size_t I = 0, utempl::ConstexprString... names>
-  static consteval auto GetDependencies() requires (I == 0 || 
-      requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
-    if constexpr(I == 0 && !requires {Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});}) {
-      return utempl::Tuple{};
-    } else {
-      if constexpr(requires{GetDependencies<I + 1, names...>();}) {
-        constexpr auto name = Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});
-        if constexpr(name == kBasicTaskProcessorName) {
-          return GetDependencies<I + 1, names...>();
+  
+  template <auto = 0>
+  static consteval auto GetDependencies() {
+    return [](auto... is) {
+      return ([&]{
+        constexpr auto response = Magic(utempl::loopholes::Getter<DependencyInfoKey<Current, is>{}>{});
+        if constexpr(response == kBasicTaskProcessorName) {
+          return utempl::Tuple{};
         } else {
-          return GetDependencies<I + 1, names..., name>();
+          return utempl::Tuple{response};
         };
-      } else {
-        constexpr auto name = Magic(loopholes::Getter<DependencyInfoKey<Current, I>{}>{});
-        if constexpr(static_cast<std::string_view>(name) == kBasicTaskProcessorName) {
-          return utempl::Tuple{names...};
-        } else {
-          return utempl::Tuple{names..., name};
-        };
-      };
-    };
+      }() + ... + utempl::Tuple{});
+    } | utempl::kSeq<utempl::loopholes::Counter<Current>()>;
   };
-
   template <utempl::ConstexprString name>
   static inline consteval auto Inject() {
     Ignore<decltype(Use<Current, utempl::Wrapper<name>{}, DependencyInfoInjector<Current, config, Ts...>{}>())>();
