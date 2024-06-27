@@ -13,7 +13,11 @@ template <typename... Ts>
 struct Options : utempl::TypeList<Ts...> {};
 
 template <utempl::ConstexprString name, typename T, Options Options>
-struct ComponentConfig {};
+struct ComponentConfig {
+  using Type = T;
+  static constexpr auto kOptions = Options;
+  static constexpr auto kName = name;
+};
 
 namespace impl {
 
@@ -142,6 +146,15 @@ inline constexpr auto InitComponents(T& ccontext) -> void {
 
 } // namespace impl
 
+#define COMPONENT_REQUIRES(name, impl) \
+  template <typename T> \
+  concept name = impl ; \
+  template <typename T> \
+  struct name##M { \
+    static constexpr auto value = name<T>;\
+  }
+
+
 template <ConstexprConfig config, utempl::Tuple DependencyGraph, auto names, auto Options, typename... Ts>
 struct ServiceContext {
   static constexpr auto kNames = names;
@@ -162,6 +175,27 @@ struct ServiceContext {
   inline constexpr auto FindComponent() -> auto& {
     constexpr auto I = utempl::Find(names, name);
     return *Get<I>(this->storage);
+  };
+  template <template <typename...> typename F>
+  constexpr auto FindComponent() -> auto& {
+    constexpr auto arr = std::to_array<bool>({F<Ts>::value...});
+    constexpr auto I = std::ranges::find(arr, true) - arr.begin();
+    return *Get<I>(this->storage);
+  };
+  template <template <typename...> typename F>
+  constexpr auto FindAllComponents() {
+    constexpr auto Indexes = [&](auto... is) {
+      return utempl::TupleCat(std::array<std::size_t, 0>{}, [&]{
+        if constexpr(F<Ts>::value) {
+          return std::to_array<std::size_t>({is});
+        } else {
+          return std::array<std::size_t, 0>{};
+        };
+    }()...);} | utempl::kSeq<sizeof...(Ts)>;
+    return utempl::Unpack(utempl::PackConstexprWrapper<Indexes, utempl::Tuple<>>(), 
+                          [&](auto... is) -> utempl::Tuple<decltype(*Get<is>(storage))&...> {
+                            return {*Get<is>(storage)...};
+                          });
   };
   template <>
   inline constexpr auto FindComponent<kBasicTaskProcessorName>() -> auto& {
@@ -206,6 +240,17 @@ private:
       }();
     };
   };
+  template <template <typename...> typename F>
+  static consteval auto GetIndexes() {
+    return [](auto... is) {
+      return utempl::TupleCat(std::array<std::size_t, 0>{}, [&]{
+        if constexpr(F<typename Ts::Type>::value) {
+          return std::to_array<std::size_t>({is});
+        } else {
+          return std::array<std::size_t, 0>{};
+        };
+    }()...);} | utempl::kSeq<sizeof...(Ts)>;
+  };
 public:
   template <utempl::ConstexprString name>
   using FindComponentType = decltype(FindComponentTypeImpl<name>(Ts{}...));
@@ -245,7 +290,37 @@ public:
     >{}
   >
   static auto FindComponent() -> T&;
-  
+ 
+
+
+  template <
+    template <typename...> typename F,
+    typename...,
+    auto Arr = std::to_array<bool>({F<typename Ts::Type>::value...}),
+    std::size_t I = std::ranges::find(Arr, true) - Arr.begin(),
+    typename R = decltype(FindComponent<decltype(Get<I>(utempl::TypeList<Ts...>{}))::kName>())
+  >
+  static auto FindComponent() -> decltype(Get<I>(utempl::TypeList<Ts...>{}))::Type&;
+
+private:
+
+  template <std::size_t... Ids>
+  static auto FindAllComponentsImpl() -> utempl::Tuple<decltype(FindComponent<decltype(Get<Ids>(utempl::TypeList<Ts...>{}))::kName>())...> {};
+
+public:
+
+
+
+  template <
+    template <typename...> typename F,
+    typename...,
+    typename R = decltype(utempl::Unpack(utempl::PackConstexprWrapper<GetIndexes<F>(), utempl::Tuple<>>(), 
+                                        [](auto... is) -> decltype(FindAllComponentsImpl<is...>()) {
+                                          std::unreachable();
+                                        }))
+  >
+  static auto FindAllComponents() -> R;
+
   template <auto = 0>
   static consteval auto GetDependencies() {
     return [](auto... is) {
