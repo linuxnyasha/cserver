@@ -196,10 +196,14 @@ private:
   template <utempl::ConstexprString name, utempl::ConstexprString... names, typename... TTs, Options... Options>
   static consteval auto FindComponentTypeImpl(ComponentConfig<names, TTs, Options>...) {
     if constexpr(static_cast<std::string_view>(name) == kBasicTaskProcessorName) {
-      return [] -> engine::basic::TaskProcessor<config.template Get<"threads">() - 1> {}();
+      return [&] -> engine::basic::TaskProcessor<config.template Get<"threads">() - 1> {
+        std::unreachable();
+      }();
     } else {
       constexpr auto I = utempl::Find(utempl::Tuple{std::string_view{names}...}, std::string_view{name});
-      return [] -> decltype(utempl::Get<I>(utempl::TypeList<TTs...>{})) {}();
+      return [&] -> decltype(utempl::Get<I>(utempl::TypeList<TTs...>{})) {
+        std::unreachable();
+      }();
     };
   };
 public:
@@ -225,7 +229,7 @@ public:
       name
     >{}
   >
-  static constexpr auto FindComponent() -> FindComponentType<name>&;
+  static auto FindComponent() -> FindComponentType<name>&;
 
 
   template <
@@ -240,7 +244,7 @@ public:
       FindComponentName<T>
     >{}
   >
-  static constexpr auto FindComponent() -> T&;
+  static auto FindComponent() -> T&;
   
   template <auto = 0>
   static consteval auto GetDependencies() {

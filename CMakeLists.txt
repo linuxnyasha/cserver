@@ -21,7 +21,7 @@ target_include_directories(
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 target_link_libraries(cserver INTERFACE utempl::utempl ${Boost_LIBRARIES} llhttp ${OPENSSL_LIBRARIES} )
 
-target_compile_features(cserver INTERFACE cxx_std_20)
+target_compile_features(cserver INTERFACE cxx_std_23)
 
 install(TARGETS cserver
   EXPORT cserverTargets
@@ -52,4 +52,15 @@ install(FILES "${PROJECT_BINARY_DIR}/cserverConfig.cmake"
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/cserver/cmake)
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cserver DESTINATION include)
+
+if(ENABLE_TESTS) 
+  find_package(GTest REQUIRED)
+  enable_testing()
+  file(GLOB SOURCES tests/* tests/*/* tests/*/*/*)
+  add_executable(cserver_tests ${SOURCES})
+  target_link_libraries(cserver_tests GTest::gtest_main cserver)
+  set_property(TARGET cserver_tests PROPERTY CXX_STANDARD 23)
+  include(GoogleTest)
+  gtest_discover_tests(cserver_tests)
+endif()
 
