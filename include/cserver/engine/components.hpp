@@ -384,7 +384,9 @@ struct ServiceContextBuilder {
   template <utempl::ConstexprString name>
   static consteval auto FindComponent() {
     if constexpr(name == kBasicTaskProcessorName) {
-      return [] -> engine::basic::TaskProcessor<config.template Get<"threads">() - 1> {}();
+      return [] -> engine::basic::TaskProcessor<config.template Get<"threads">() - 1> {
+        std::unreachable();
+      }();
     } else {
       return []<typename... TTs, utempl::ConstexprString... names, Options... Options>
       (const ServiceContextBuilder<config, ComponentConfig<names, TTs, Options>...>&) 
