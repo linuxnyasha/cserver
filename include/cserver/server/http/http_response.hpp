@@ -5,14 +5,14 @@
 
 namespace cserver::server::http {
 
-struct HTTPResponse {
+struct HttpResponse {
   unsigned short statusCode = 200;
   std::string statusMessage = "OK";
   std::unordered_map<std::string, std::string> headers = {};
   std::string body = {};
   inline auto ToString() const -> std::string {
     std::ostringstream stream;
-    stream << fmt::format("HTTP/1.1 {} {}\r\n", this->statusCode, this->statusMessage);
+    stream << fmt::format("Http/1.1 {} {}\r\n", this->statusCode, this->statusMessage);
     for(const auto& header : this->headers) {
       stream << fmt::format("{}: {}\r\n", header.first, header.second);
     };

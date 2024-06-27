@@ -52,16 +52,16 @@ private:
         std::unreachable();
       }();
     } else {
-      return [] -> server::http::HTTPResponse {
+      return [] -> server::http::HttpResponse {
         std::unreachable();
       }(); 
     };
   };
   template <typename Socket>
-  inline auto ReadHeaders(Socket&& socket, auto&&...) const -> cserver::Task<server::http::HTTPResponse> {
+  inline auto ReadHeaders(Socket&& socket, auto&&...) const -> cserver::Task<server::http::HttpResponse> {
     std::string serverResponse;
     co_await boost::asio::async_read_until(socket, boost::asio::dynamic_buffer(serverResponse), "\r\n\r\n", boost::asio::use_awaitable);
-    server::http::HTTPResponse response;
+    server::http::HttpResponse response;
     std::istringstream responseStream(std::move(serverResponse));
     std::string httpVersion;
     responseStream >> httpVersion >> response.statusCode;

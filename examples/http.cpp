@@ -2,15 +2,15 @@
 #include <cserver/engine/basic/task_processor.hpp>
 #include <cserver/server/handlers/http_handler_base.hpp>
  
-struct SomeComponent : public cserver::server::handlers::HTTPHandlerBaseWithAdder<SomeComponent> {
+struct SomeComponent : public cserver::server::handlers::HttpHandlerBaseWithAdder<SomeComponent> {
   static constexpr utempl::ConstexprString kPath = "/v1/some/";
   static constexpr utempl::ConstexprString kName = "name";
   static constexpr utempl::ConstexprString kHandlerManagerName = "server";
   inline constexpr SomeComponent(auto name, auto& context) :
-      HTTPHandlerBaseWithAdder(name, context) {};
+      HttpHandlerBaseWithAdder(name, context) {};
  
-  inline auto HandleRequestThrow(const cserver::server::http::HTTPRequest& request) -> cserver::Task<cserver::server::http::HTTPResponse> {
-    co_return cserver::server::http::HTTPResponse{.body = request.url.data()};
+  inline auto HandleRequestThrow(const cserver::server::http::HttpRequest& request) -> cserver::Task<cserver::server::http::HttpResponse> {
+    co_return cserver::server::http::HttpResponse{.body = request.url.data()};
   };
 };
  

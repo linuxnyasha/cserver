@@ -7,7 +7,7 @@ namespace cserver::clients::http {
 template <typename HttpClient>
 struct Request {
   HttpClient& client;
-  server::http::HTTPRequest request;
+  server::http::HttpRequest request;
   Request(HttpClient& client) :
       client(client) {
     this->AddHeader("User-Agent", "cserver/1");

@@ -6,14 +6,14 @@
 
 namespace cserver::server::http {
 
-struct HTTPRequest {
+struct HttpRequest {
   std::string method = {};
   boost::urls::url url = {};
   std::unordered_map<std::string, std::string> headers = {};
   std::string body = {};
   inline auto ToString() const -> std::string {
     std::ostringstream stream;
-    stream << fmt::format("{} {} HTTP/1.1\r\n", this->method, this->url.path());
+    stream << fmt::format("{} {} Http/1.1\r\n", this->method, this->url.path());
     for(const auto& header : this->headers) {
       stream << fmt::format("{}: {}\r\n", header.first, header.second);
     };

@@ -7,16 +7,16 @@
 
 namespace cserver::server::handlers {
 
-struct HTTPHandlerBase {
+struct HttpHandlerBase {
   template <typename T, utempl::ConstexprString name, Options Options>
-  static consteval auto Adder(const auto& context) {
+  static consteval auto HttpHandlerAdder(const auto& context) {
     return context.TransformComponents([]<typename TT>(const ComponentConfig<T::kHandlerManagerName, TT, Options>) {
       return ComponentConfig<T::kHandlerManagerName, typename TT::template AddHandler<ComponentConfig<name, T, Options>>, Options>{};
     });
   };
   template <typename Self>
-  inline auto HandleRequest(this Self&& self, http::HTTPRequest&& request
-                            ) -> Task<http::HTTPResponse> requires requires{self.HandleRequestThrow(std::move(request));} {
+  inline auto HandleRequest(this Self&& self, http::HttpRequest&& request
+                            ) -> Task<http::HttpResponse> requires requires{self.HandleRequestThrow(std::move(request));} {
     using T = std::remove_cvref_t<Self>;
     try {
       co_return co_await std::forward<Self>(self).HandleRequestThrow(std::move(request));
@@ -25,11 +25,11 @@ struct HTTPHandlerBase {
     } catch(...) {
       fmt::println("Error in handler with default name {}: Unknown Error", T::kName);
     };
-    co_return http::HTTPResponse{.statusCode = 500, .statusMessage = "Internal Server Error", .body = "Internal Server Error"};
+    co_return http::HttpResponse{.statusCode = 500, .statusMessage = "Internal Server Error", .body = "Internal Server Error"};
   };
   template <typename Self>
-  inline auto HandleRequestStream(this Self&& self, cserver::server::http::HTTPRequest&& request,
-                                  cserver::server::http::HTTPStream& stream) -> Task<void> requires requires{self.HandleRequestStreamThrow(std::move(request), stream);} {
+  inline auto HandleRequestStream(this Self&& self, cserver::server::http::HttpRequest&& request,
+                                  cserver::server::http::HttpStream& stream) -> Task<void> requires requires{self.HandleRequestStreamThrow(std::move(request), stream);} {
     using T = std::remove_cvref_t<Self>;
     try {
       co_await std::forward<Self>(self).HandleRequestStreamThrow(std::move(request), stream);
@@ -40,20 +40,20 @@ struct HTTPHandlerBase {
     };
     co_await stream.Close();
   };
-  inline constexpr HTTPHandlerBase(auto, auto&) {};
+  inline constexpr HttpHandlerBase(auto, auto&) {};
 };
 template <typename T>
-struct HTTPHandlerAdder {
+struct HttpHandlerAdderType {
   template <utempl::ConstexprString Name, Options Options>
   static consteval auto Adder(const auto& context) {
-    return HTTPHandlerBase::template Adder<T, Name, Options>(context);
+    return HttpHandlerBase::template HttpHandlerAdder<T, Name, Options>(context);
   };
 };
 template <typename T>
-struct HTTPHandlerBaseWithAdder : HTTPHandlerBase, HTTPHandlerAdder<T> {
-  inline constexpr HTTPHandlerBaseWithAdder(auto name, auto& context) :
-      HTTPHandlerBase(name, context),
-      HTTPHandlerAdder<T>{} {};
+struct HttpHandlerBaseWithAdder : HttpHandlerBase, HttpHandlerAdderType<T> {
+  inline constexpr HttpHandlerBaseWithAdder(auto name, auto& context) :
+      HttpHandlerBase(name, context),
+      HttpHandlerAdderType<T>{} {};
 };
 
 } // namespace cserver::server::handlers

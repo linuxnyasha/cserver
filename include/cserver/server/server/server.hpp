@@ -49,13 +49,13 @@ struct Server : StopBlocker {
     Server(std::index_sequence_for<Ts...>{}, name, context) {
   };
   template<auto I, typename Socket>
-  auto ProcessHandler(Socket&& socket, http::HTTPRequest request) -> Task<void> {
-    if constexpr(requires(http::HTTPStream& stream){Get<I>(this->handlers).HandleRequestStream(std::move(request), stream);}) {
-      http::HTTPStream stream{std::move(socket)};
+  auto ProcessHandler(Socket&& socket, http::HttpRequest request) -> Task<void> {
+    if constexpr(requires(http::HttpStream& stream){Get<I>(this->handlers).HandleRequestStream(std::move(request), stream);}) {
+      http::HttpStream stream{std::move(socket)};
       co_await Get<I>(this->handlers).HandleRequestStream(std::move(request), stream);
       co_return;
     } else {
-      http::HTTPResponse response = co_await Get<I>(this->handlers).HandleRequest(std::move(request));
+      http::HttpResponse response = co_await Get<I>(this->handlers).HandleRequest(std::move(request));
       response.headers["Content-Length"] = std::to_string(response.body.size());
       response.headers["Server"] = "cserver/1";
       auto data = response.ToString();
@@ -67,7 +67,7 @@ struct Server : StopBlocker {
     std::string buffer;
     buffer.reserve(socket.available());
     co_await boost::asio::async_read_until(socket, boost::asio::dynamic_buffer(buffer), "\r\n\r\n", boost::asio::use_awaitable);
-    http::HTTPRequest request = http::HTTPRequestParser{buffer};
+    http::HttpRequest request = http::HttpRequestParser{buffer};
     bool flag = false;
     co_await [&]<auto... Is>(std::index_sequence<Is...>) -> cserver::Task<void> {
       (co_await [&] -> cserver::Task<void> {
@@ -76,7 +76,7 @@ struct Server : StopBlocker {
         };
       }(), ...);
     }(std::index_sequence_for<Ts...>());
-    constexpr std::string_view error404 = "HTTP/1.1 404 Not Found\r\n"
+    constexpr std::string_view error404 = "Http/1.1 404 Not Found\r\n"
                                           "Content-Length: 0\r\n"
                                           "\r\n";
     if(!flag) {
