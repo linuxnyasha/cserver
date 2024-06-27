@@ -18,8 +18,8 @@ struct SomeOtherComponent {
 
 TEST(Dependencies, Get) {
   constexpr auto dependencies = cserver::ServiceContextBuilder{}
-    .Append<SomeComponent>()
     .Append<SomeOtherComponent>()
+    .Append<SomeComponent>()
     .Sort()
     .GetDependencyGraph();
   using Need = const cserver::DependencyGraph<
