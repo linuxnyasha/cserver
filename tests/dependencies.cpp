@@ -20,6 +20,7 @@ TEST(Dependencies, Get) {
   constexpr auto dependencies = cserver::ServiceContextBuilder{}
     .Append<SomeOtherComponent>()
     .Append<SomeComponent>()
+    .AppendConfigParam<"threads", 8>()
     .Sort()
     .GetDependencyGraph();
   using Need = const cserver::DependencyGraph<
