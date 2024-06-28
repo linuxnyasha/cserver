@@ -373,25 +373,6 @@ struct CompileTimeStack {
     return std::move(*this->data[tmp]);
   };
 };
-
-template <typename T>
-struct RangeView {
-  T* beginIterator;
-  T* endIterator;
-  template <typename Self>
-  inline constexpr auto begin(this Self&& self) {
-    return std::forward<Self>(self).beginIterator;
-  };
-  template <typename Self>
-  inline constexpr auto end(this Self&& self) {
-    return std::forward<Self>(self).endIterator;
-  };
-  inline constexpr RangeView(std::ranges::range auto&& range) :
-    beginIterator(std::ranges::begin(range)),
-    endIterator(std::ranges::end(range)) {};
-};
-RangeView(std::ranges::range auto&& range) -> RangeView<std::remove_reference_t<decltype(*std::ranges::begin(range))>>;
-
 } // namespace impl
 
 template <utempl::ConstexprString... Names, utempl::Tuple... Dependencies>
@@ -409,7 +390,7 @@ consteval auto TopologicalSort(const DependencyGraph<DependencyGraphElement<Name
   constexpr auto Size = utempl::kTupleSize<decltype(storage)>;
   const std::array adj = utempl::Map(storage, 
                                     [](std::ranges::range auto& arg){
-                                      return impl::RangeView{arg};
+                                      return std::ranges::subrange(arg.data(), arg.data() + arg.size());
                                     }, utempl::kType<std::array<std::size_t, 0>>);
   std::array<bool, Size> visited{};
   constexpr auto ResultSize = sizeof...(Dependencies);
