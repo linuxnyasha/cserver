@@ -261,21 +261,32 @@ struct ServiceContext {
   constexpr auto GetContextFor() /* Internal Use Only */ {
     return impl::ServiceContextForComponent<Component, std::decay_t<decltype(*this)>>{*this};
   };
-
-
+private:
+  static constexpr struct {
+    constexpr auto operator=(auto&&) const noexcept {};
+  } ComponentType{};
+  static constexpr struct {
+    constexpr auto operator=(auto&&) const noexcept {};
+  } ComponentName{};
+  static constexpr struct {
+    constexpr auto operator=(auto&&) const noexcept {};
+  } ComponentOptions{};
+  static constexpr struct {
+    constexpr auto operator=(auto&&) const noexcept {};
+  } RequiredComponent;
+public:
   template <typename Current, std::size_t I>
   constexpr auto FindComponent() -> decltype(*Get<I>(this->storage))& {
     constexpr auto Index = kUtils.GetIndexByName(Current::kName);
-
-    constexpr utempl::ConstexprString name = Current::kName;
-    constexpr Options options = Current::kOptions;
+    constexpr auto J = utempl::loopholes::Counter<Current, utempl::Wrapper<I>>();
     constexpr auto dependencies = Get<Index>(DependencyGraph);
     
     static_assert((
-      /* Component Type    */ std::ignore = utempl::kType<typename Current::Type>,
-      /* Component Name    */ std::ignore = name,
-      /* Component Options */ std::ignore = options,
-      dependencies.size() != 0), "Constructor is not declared as constexpr");
+      ComponentType     = utempl::kType<typename Current::Type>,
+      ComponentName     = utempl::kWrapper<Current::kName>,
+      ComponentOptions  = utempl::kWrapper<Current::kOptions>,
+      RequiredComponent = utempl::kType<decltype(Get<I>(kUtils.kComponentConfigs))>,
+      dependencies.size() > J), "Constructor is not declared as constexpr");
 
     return *Get<I>(this->storage);
   };
