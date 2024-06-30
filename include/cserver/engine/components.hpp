@@ -12,11 +12,11 @@ struct SeparatedComponent {};
 template <typename... Ts>
 struct Options : utempl::TypeList<Ts...> {};
 
-template <utempl::ConstexprString name, typename T, Options Options>
+template <utempl::ConstexprString Name, typename T, Options Options>
 struct ComponentConfig {
   using Type = T;
   static constexpr auto kOptions = Options;
-  static constexpr auto kName = name;
+  static constexpr auto kName = Name;
 };
 
 namespace impl {
@@ -121,10 +121,43 @@ struct AsyncConditionVariable {
   bool flag;
 };
 
+template <typename Component, typename T>
+struct ServiceContextForComponent {
+  T& context;
+  static constexpr auto kConfig = T::kConfig;
+  static constexpr auto kUtils = T::kUtils;
+
+  template <std::size_t I>
+  constexpr auto FindComponent() -> decltype(this->context.template FindComponent<Component, I>()) {
+    return this->context.template FindComponent<Component, I>();
+  };
+
+  template <utempl::ConstexprString Name>
+  constexpr auto FindComponent() -> decltype(FindComponent<kUtils.template GetIndexByName(Name)>()) {
+    return this->FindComponent<kUtils.template GetIndexByName(Name)>();
+  };
+  template <template <typename...> typename F>
+  constexpr auto FindComponent() -> decltype(this->FindComponent<kUtils.template GetFirstIndex<F>()>()) {
+    return this->FindComponent<kUtils.template GetFirstIndex<F>()>();
+  };
+  template <typename TT>
+  constexpr auto FindComponent() -> decltype(this->FindComponent<kUtils.template GetIndexByType<TT>()>()) {
+    return this->FindComponent<kUtils.template GetIndexByType<TT>()>();
+  };
+  template <template <typename...> typename F>
+  constexpr auto FindAllComponents() {
+    return utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(), 
+                          [&](auto... is) -> utempl::Tuple<decltype(*Get<is>(context.storage))&...> {
+                            return {context.template FindComponent<Component, is>()...};
+                          });
+  };
+};
+
+
 template <utempl::Tuple DependencyGraph, typename T>
 inline constexpr auto InitComponents(T& ccontext) -> void {
   static auto& context = ccontext;
-  static auto& taskProcessor = context.template FindComponent<kBasicTaskProcessorName>();
+  static auto& taskProcessor = context.taskProcessor;
   static auto& ioContext = taskProcessor.ioContext;
   static utempl::Tuple inited = TransformDependencyGraphToTupleWithDependenciesToInitedFlagChanges<AsyncConditionVariable, DependencyGraph>(ioContext); 
   auto work = make_work_guard(ioContext);
@@ -134,7 +167,9 @@ inline constexpr auto InitComponents(T& ccontext) -> void {
       for(auto* flag : dependencies) {
         co_await flag->AsyncWait();
       };
-      Get<Is>(context.storage).emplace(utempl::Wrapper<Get<Is>(T::kUtils.kNames)>{}, context);
+      ServiceContextForComponent<decltype(Get<Is>(decltype(T::kUtils)::kComponentConfigs)), T> currentContext{context};
+      Get<Is>(context.storage).emplace(utempl::Wrapper<Get<Is>(T::kUtils.kNames)>{}, 
+                                       currentContext);
       auto& componentInitFlag = GetInitFlagFor<AsyncConditionVariable, Is>(ioContext);
       componentInitFlag.NotifyAll();
       if constexpr(requires{Get<Is>(context.storage)->Run();}) {
@@ -206,36 +241,39 @@ struct ServiceContext {
   engine::basic::TaskProcessor<kThreadsCount - 1> taskProcessor;
   utempl::Tuple<std::optional<typename Ts::Type>...> storage;
 
-  inline constexpr ServiceContext() :
+  constexpr ServiceContext() :
       taskProcessor{utempl::Wrapper<utempl::ConstexprString{kBasicTaskProcessorName}>{}, *this}
       ,storage{} {
   };
-  inline constexpr auto Run() {
+  constexpr auto Run() {
     impl::InitComponents<DependencyGraph>(*this);
     this->taskProcessor.Run();
   };
-  template <utempl::ConstexprString name>
-  inline constexpr auto FindComponent() -> auto& {
-    return *Get<kUtils.GetIndexByName(name)>(this->storage);
+
+
+  template <typename Component>
+  constexpr auto GetContextFor() /* Internal Use Only */ {
+    return impl::ServiceContextForComponent<Component, std::decay_t<decltype(*this)>>{*this};
   };
-  template <template <typename...> typename F>
-  constexpr auto FindComponent() -> auto& {
-    return *Get<kUtils.template GetFirstIndex<F>()>(this->storage);
-  };
-  template <template <typename...> typename F>
-  constexpr auto FindAllComponents() {
-    return utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(), 
-                          [&](auto... is) -> utempl::Tuple<decltype(*Get<is>(storage))&...> {
-                            return {*Get<is>(storage)...};
-                          });
-  };
-  template <>
-  inline constexpr auto FindComponent<kBasicTaskProcessorName>() -> auto& {
-    return this->taskProcessor;
-  };
-  template <typename T>
-  inline constexpr auto FindComponent() -> T& {
-    return *Get<kUtils.template GetIndexByType<T>()>(this->storage);
+
+
+  template <typename Current, std::size_t I>
+  constexpr auto FindComponent() -> auto& requires (I == sizeof...(Ts) || requires{*Get<I>(this->storage);}) {
+    constexpr auto Index = kUtils.GetIndexByName(Current::kName);
+    if constexpr(I == sizeof...(Ts)) {
+      return this->taskProcessor;
+    } else {
+      constexpr utempl::ConstexprString name = Current::kName;
+      constexpr Options options = Current::kOptions;
+      constexpr auto dependencies = Get<Index>(DependencyGraph);
+      static_assert((
+        /* Component Type    */ std::ignore = utempl::kType<typename Current::Type>,
+        /* Component Name    */ std::ignore = name,
+        /* Component Options */ std::ignore = options,
+        dependencies.size() != 0), "Constructor is not declared as constexpr");
+
+      return *Get<I>(this->storage);
+    };
   };
 
 };
@@ -495,7 +533,7 @@ struct ServiceContextBuilder {
   static constexpr auto Run() -> void {
     static auto context = GetServiceContext();
     context.Run();
-    context.template FindComponent<kBasicTaskProcessorName>().ioContext.run();
+    context.taskProcessor.ioContext.run();
   };
 };
 } // namespace cserver

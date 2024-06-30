@@ -36,7 +36,11 @@ TEST(Meta, AllDependencies) {
 
   constexpr auto dependencies = builder.GetDependencyGraph();
   using Need = utempl::Tuple<OtherComponent&, OtherComponent2&>;
-  using R = decltype(builder.GetServiceContext().FindAllComponents<SomeM>());
+  using R = decltype(
+    builder
+      .GetServiceContext()
+      .GetContextFor<cserver::ComponentConfig<"some", SomeComponent, {}>>()
+      .FindAllComponents<SomeM>());
 
   EXPECT_EQ(boost::typeindex::type_id<R>().pretty_name(),
             boost::typeindex::type_id<Need>().pretty_name());
