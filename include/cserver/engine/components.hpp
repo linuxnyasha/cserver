@@ -133,9 +133,15 @@ struct ServiceContextForComponent {
   };
 
   template <utempl::ConstexprString Name>
-  constexpr auto FindComponent() -> decltype(FindComponent<kUtils.template GetIndexByName(Name)>()) {
-    return this->FindComponent<kUtils.template GetIndexByName(Name)>();
+  constexpr auto FindComponent() -> auto&
+      requires (Name == kBasicTaskProcessorName || requires {this->FindComponent<kUtils.template GetIndexByName(Name)>();}) {
+    if constexpr(Name == kBasicTaskProcessorName) {
+      return this->context.taskProcessor;
+    } else {
+      return this->FindComponent<kUtils.template GetIndexByName(Name)>();
+    };
   };
+
   template <template <typename...> typename F>
   constexpr auto FindComponent() -> decltype(this->FindComponent<kUtils.template GetFirstIndex<F>()>()) {
     return this->FindComponent<kUtils.template GetFirstIndex<F>()>();
@@ -258,22 +264,20 @@ struct ServiceContext {
 
 
   template <typename Current, std::size_t I>
-  constexpr auto FindComponent() -> auto& requires (I == sizeof...(Ts) || requires{*Get<I>(this->storage);}) {
+  constexpr auto FindComponent() -> decltype(*Get<I>(this->storage))& {
     constexpr auto Index = kUtils.GetIndexByName(Current::kName);
-    if constexpr(I == sizeof...(Ts)) {
-      return this->taskProcessor;
-    } else {
-      constexpr utempl::ConstexprString name = Current::kName;
-      constexpr Options options = Current::kOptions;
-      constexpr auto dependencies = Get<Index>(DependencyGraph);
-      static_assert((
-        /* Component Type    */ std::ignore = utempl::kType<typename Current::Type>,
-        /* Component Name    */ std::ignore = name,
-        /* Component Options */ std::ignore = options,
-        dependencies.size() != 0), "Constructor is not declared as constexpr");
 
-      return *Get<I>(this->storage);
-    };
+    constexpr utempl::ConstexprString name = Current::kName;
+    constexpr Options options = Current::kOptions;
+    constexpr auto dependencies = Get<Index>(DependencyGraph);
+    
+    static_assert((
+      /* Component Type    */ std::ignore = utempl::kType<typename Current::Type>,
+      /* Component Name    */ std::ignore = name,
+      /* Component Options */ std::ignore = options,
+      dependencies.size() != 0), "Constructor is not declared as constexpr");
+
+    return *Get<I>(this->storage);
   };
 
 };
