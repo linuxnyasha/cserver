@@ -126,6 +126,7 @@ struct ServiceContextForComponent {
   T& context;
   static constexpr auto kConfig = T::kConfig;
   static constexpr auto kUtils = T::kUtils;
+  static constexpr auto kName = Component::kName;
 
   template <std::size_t I>
   constexpr auto FindComponent() -> decltype(this->context.template FindComponent<Component, I>()) {
@@ -174,8 +175,7 @@ inline constexpr auto InitComponents(T& ccontext) -> void {
         co_await flag->AsyncWait();
       };
       ServiceContextForComponent<decltype(Get<Is>(decltype(T::kUtils)::kComponentConfigs)), T> currentContext{context};
-      Get<Is>(context.storage).emplace(utempl::Wrapper<Get<Is>(T::kUtils.kNames)>{}, 
-                                       currentContext);
+      Get<Is>(context.storage).emplace(currentContext);
       auto& componentInitFlag = GetInitFlagFor<AsyncConditionVariable, Is>(ioContext);
       componentInitFlag.NotifyAll();
       if constexpr(requires{Get<Is>(context.storage)->Run();}) {
@@ -311,7 +311,7 @@ template <typename Current, ConstexprConfig Config, typename... Ts>
 struct DependencyInfoInjector {
   static constexpr ConstexprConfig kConfig = Config;
   static constexpr DependenciesUtils<Ts...> kUtils;
-
+  static constexpr utempl::ConstexprString kName = Current::kName;
   template <utempl::ConstexprString name>
   static consteval auto FindComponentType() {
     if constexpr(name == kBasicTaskProcessorName) {
@@ -392,7 +392,7 @@ public:
   };
   template <utempl::ConstexprString name>
   static inline consteval auto Inject() {
-    Ignore<decltype(Use<Current, utempl::Wrapper<name>{}, DependencyInfoInjector<Current, Config, Ts...>{}>())>();
+    Ignore<decltype(Use<Current, DependencyInfoInjector<Current, Config, Ts...>{}>())>();
   };
 };
 

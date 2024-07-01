@@ -6,7 +6,7 @@ COMPONENT_REQUIRES(Some, requires(T t){{t.f()} -> std::same_as<void>;});
 
 struct SomeComponent {
   static constexpr utempl::ConstexprString kName = "some";
-  constexpr SomeComponent(auto, auto& context) {
+  constexpr SomeComponent(auto& context) {
     context.template FindComponent<SomeM>();
   };
 };
@@ -14,13 +14,13 @@ struct SomeComponent {
 struct OtherComponent {
   static constexpr utempl::ConstexprString kName = "other";
   auto f() -> void {};
-  constexpr OtherComponent(auto, auto& context) {};
+  constexpr OtherComponent(auto& context) {};
 };
 
 struct OtherComponent2 {
   static constexpr utempl::ConstexprString kName = "other2";
   auto f() -> void {};
-  constexpr OtherComponent2(auto, auto& context) {};
+  constexpr OtherComponent2(auto& context) {};
 };
 
 

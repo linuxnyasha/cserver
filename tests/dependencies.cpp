@@ -4,14 +4,14 @@
 
 struct SomeComponent {
   static constexpr utempl::ConstexprString kName = "some";
-  constexpr SomeComponent(auto, auto&) {};
+  constexpr SomeComponent(auto&) {};
 };
 
 
 struct SomeOtherComponent {
   SomeComponent& component;
   static constexpr utempl::ConstexprString kName = "other";
-  constexpr SomeOtherComponent(auto, auto& context) : component(context.template FindComponent<"some">()) {
+  constexpr SomeOtherComponent(auto& context) : component(context.template FindComponent<"some">()) {
   };
 };
 

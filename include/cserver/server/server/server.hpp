@@ -35,18 +35,17 @@ struct Server : StopBlocker {
       });
   };
   template <
-    utempl::ConstexprString Name,
     typename T,
     std::size_t... Is>
-  inline constexpr Server(std::index_sequence<Is...>, utempl::Wrapper<Name> name, T& context) :
-      StopBlocker(name, context),
+  inline constexpr Server(std::index_sequence<Is...>, T& context) :
+      StopBlocker(context),
       taskProcessor(context.template FindComponent<TPName>()),
       handlers{context.template FindComponent<Get<Is>(kNames)>()...},
-      port(T::kConfig.template Get<Name>().template Get<"port">()) {
+      port(T::kConfig.template Get<T::kName>().template Get<"port">()) {
     
   };
-  inline constexpr Server(auto name, auto& context) : 
-    Server(std::index_sequence_for<Ts...>{}, name, context) {
+  inline constexpr Server(auto& context) : 
+    Server(std::index_sequence_for<Ts...>{}, context) {
   };
   template<auto I, typename Socket>
   auto ProcessHandler(Socket&& socket, http::HttpRequest request) -> Task<void> {

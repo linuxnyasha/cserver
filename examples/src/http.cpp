@@ -6,8 +6,8 @@ struct SomeComponent : public cserver::server::handlers::HttpHandlerBaseWithAdde
   static constexpr utempl::ConstexprString kPath = "/v1/some/";
   static constexpr utempl::ConstexprString kName = "name";
   static constexpr utempl::ConstexprString kHandlerManagerName = "server";
-  inline constexpr SomeComponent(auto name, auto& context) :
-      HttpHandlerBaseWithAdder(name, context) {};
+  inline constexpr SomeComponent(auto& context) :
+      HttpHandlerBaseWithAdder(context) {};
  
   inline auto HandleRequestThrow(const cserver::server::http::HttpRequest& request) -> cserver::Task<cserver::server::http::HttpResponse> {
     co_return cserver::server::http::HttpResponse{.body = request.url.data()};

@@ -40,7 +40,7 @@ struct HttpHandlerBase {
     };
     co_await stream.Close();
   };
-  inline constexpr HttpHandlerBase(auto, auto&) {};
+  inline constexpr HttpHandlerBase(auto&) {};
 };
 template <typename T>
 struct HttpHandlerAdderType {
@@ -51,8 +51,8 @@ struct HttpHandlerAdderType {
 };
 template <typename T>
 struct HttpHandlerBaseWithAdder : HttpHandlerBase, HttpHandlerAdderType<T> {
-  inline constexpr HttpHandlerBaseWithAdder(auto name, auto& context) :
-      HttpHandlerBase(name, context),
+  inline constexpr HttpHandlerBaseWithAdder(auto& context) :
+      HttpHandlerBase(context),
       HttpHandlerAdderType<T>{} {};
 };
 
