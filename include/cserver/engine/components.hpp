@@ -160,22 +160,47 @@ struct ServiceContextForComponent {
   };
 };
 
+template <typename Component, typename T>
+struct ServiceContextForComponentWithCliArgs : ServiceContextForComponent<Component, T> {
+  int argc;
+  const char** argv;
+
+  constexpr ServiceContextForComponentWithCliArgs(T& context, int argc, const char** argv) :
+      ServiceContextForComponent<Component, T>(context),
+      argc(argc),
+      argv(argv) {};
+};
+
+
 
 template <utempl::Tuple DependencyGraph, typename T>
-inline constexpr auto InitComponents(T& ccontext) -> void {
+inline constexpr auto InitComponents(T& ccontext, int argc, const char** argv) -> void {
   static auto& context = ccontext;
   static auto& taskProcessor = context.taskProcessor;
   static auto& ioContext = taskProcessor.ioContext;
+  static constexpr utempl::ConstexprString cliArgs = [] -> decltype(auto) {
+    if constexpr(!std::is_same_v<decltype(T::kConfig.template Get<"cliArgs">()), void>) {
+      return T::kConfig.template Get<"cliArgs">();
+    } else {
+      return "";
+    };
+  }();
   static utempl::Tuple inited = TransformDependencyGraphToTupleWithDependenciesToInitedFlagChanges<AsyncConditionVariable, DependencyGraph>(ioContext); 
   auto work = make_work_guard(ioContext);
-  []<std::size_t... Is>(std::index_sequence<Is...>){
-    (boost::asio::co_spawn(ioContext, []() -> cserver::Task<> {
+  [argc, argv]<std::size_t... Is>(std::index_sequence<Is...>){
+    (boost::asio::co_spawn(ioContext, [argc, argv]() -> cserver::Task<> {
       auto& dependencies = Get<Is>(inited);
       for(auto* flag : dependencies) {
         co_await flag->AsyncWait();
       };
-      ServiceContextForComponent<decltype(Get<Is>(decltype(T::kUtils)::kComponentConfigs)), T> currentContext{context};
-      Get<Is>(context.storage).emplace(currentContext);
+      using Current = decltype(Get<Is>(decltype(T::kUtils)::kComponentConfigs));
+      if constexpr(Current::kName == cliArgs) {
+        ServiceContextForComponentWithCliArgs<Current, T> currentContext{context, argc, argv};
+         Get<Is>(context.storage).emplace(currentContext);
+      } else {
+        ServiceContextForComponent<Current, T> currentContext{context};
+        Get<Is>(context.storage).emplace(currentContext);
+      };
       auto& componentInitFlag = GetInitFlagFor<AsyncConditionVariable, Is>(ioContext);
       componentInitFlag.NotifyAll();
       if constexpr(requires{Get<Is>(context.storage)->Run();}) {
@@ -251,8 +276,8 @@ struct ServiceContext {
       taskProcessor{utempl::Wrapper<utempl::ConstexprString{kBasicTaskProcessorName}>{}, *this}
       ,storage{} {
   };
-  constexpr auto Run() {
-    impl::InitComponents<DependencyGraph>(*this);
+  constexpr auto Run(int argc, const char** argv) {
+    impl::InitComponents<DependencyGraph>(*this, argc, argv);
     this->taskProcessor.Run();
   };
 
@@ -309,6 +334,8 @@ consteval auto Ignore() {};
 
 template <typename Current, ConstexprConfig Config, typename... Ts>
 struct DependencyInfoInjector {
+  int argc{};
+  const char** argv{};
   static constexpr ConstexprConfig kConfig = Config;
   static constexpr DependenciesUtils<Ts...> kUtils;
   static constexpr utempl::ConstexprString kName = Current::kName;
@@ -545,9 +572,9 @@ struct ServiceContextBuilder {
     return ServiceContext<config, GetIndexDependencyGraph(), ComponentConfigs...>{};
   };
 
-  static constexpr auto Run() -> void {
+  static constexpr auto Run(int argc = 0, const char** argv = nullptr) -> void {
     static auto context = GetServiceContext();
-    context.Run();
+    context.Run(argc, argv);
     context.taskProcessor.ioContext.run();
   };
 };
