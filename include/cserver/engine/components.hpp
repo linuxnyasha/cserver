@@ -174,10 +174,12 @@ struct ServiceContextForComponentWithCliArgs : ServiceContextForComponent<Compon
 
 
 template <utempl::Tuple DependencyGraph, typename T>
-inline constexpr auto InitComponents(T& ccontext, int argc, const char** argv) -> void {
+inline constexpr auto InitComponents(T& ccontext, int ac, const char** av) -> void {
   static auto& context = ccontext;
   static auto& taskProcessor = context.taskProcessor;
   static auto& ioContext = taskProcessor.ioContext;
+  static const auto argc = ac;
+  static const auto argv = av;
   static constexpr utempl::ConstexprString cliArgs = [] -> decltype(auto) {
     if constexpr(!std::is_same_v<decltype(T::kConfig.template Get<"cliArgs">()), void>) {
       return T::kConfig.template Get<"cliArgs">();
@@ -187,19 +189,27 @@ inline constexpr auto InitComponents(T& ccontext, int argc, const char** argv) -
   }();
   static utempl::Tuple inited = TransformDependencyGraphToTupleWithDependenciesToInitedFlagChanges<AsyncConditionVariable, DependencyGraph>(ioContext); 
   auto work = make_work_guard(ioContext);
-  [argc, argv]<std::size_t... Is>(std::index_sequence<Is...>){
-    (boost::asio::co_spawn(ioContext, [argc, argv]() -> cserver::Task<> {
+  []<std::size_t... Is>(std::index_sequence<Is...>){
+    (boost::asio::co_spawn(ioContext, []() -> cserver::Task<> {
+      using Current = decltype(Get<Is>(decltype(T::kUtils)::kComponentConfigs));
       auto& dependencies = Get<Is>(inited);
       for(auto* flag : dependencies) {
         co_await flag->AsyncWait();
       };
-      using Current = decltype(Get<Is>(decltype(T::kUtils)::kComponentConfigs));
-      if constexpr(Current::kName == cliArgs) {
-        ServiceContextForComponentWithCliArgs<Current, T> currentContext{context, argc, argv};
-         Get<Is>(context.storage).emplace(currentContext);
-      } else {
-        ServiceContextForComponent<Current, T> currentContext{context};
-        Get<Is>(context.storage).emplace(currentContext);
+      try {
+        if constexpr(Current::kName == cliArgs) {
+          ServiceContextForComponentWithCliArgs<Current, T> currentContext{context, argc, argv};
+          Get<Is>(context.storage).emplace(currentContext);
+        } else {
+          ServiceContextForComponent<Current, T> currentContext{context};
+          Get<Is>(context.storage).emplace(currentContext);
+        };
+      } catch(std::exception& error) {
+        fmt::println("An error occurred while initializing component {}: {}", static_cast<std::string_view>(Current::kName), error.what());
+        ioContext.stop();
+      } catch(...) {
+        fmt::println("An unknown error occurred while initializing component {}", static_cast<std::string_view>(Current::kName));
+        ioContext.stop();
       };
       auto& componentInitFlag = GetInitFlagFor<AsyncConditionVariable, Is>(ioContext);
       componentInitFlag.NotifyAll();
@@ -332,13 +342,13 @@ inline constexpr auto Use() {
 template <typename...>
 consteval auto Ignore() {};
 
-template <typename Current, ConstexprConfig Config, typename... Ts>
+template <typename Current, utempl::ConstexprString Name, ConstexprConfig Config, typename... Ts>
 struct DependencyInfoInjector {
   int argc{};
   const char** argv{};
   static constexpr ConstexprConfig kConfig = Config;
   static constexpr DependenciesUtils<Ts...> kUtils;
-  static constexpr utempl::ConstexprString kName = Current::kName;
+  static constexpr utempl::ConstexprString kName = Name;
   template <utempl::ConstexprString name>
   static consteval auto FindComponentType() {
     if constexpr(name == kBasicTaskProcessorName) {
@@ -417,9 +427,8 @@ public:
       }() + ... + utempl::Tuple{});
     } | utempl::kSeq<utempl::loopholes::Counter<Current>()>;
   };
-  template <utempl::ConstexprString name>
   static inline consteval auto Inject() {
-    Ignore<decltype(Use<Current, DependencyInfoInjector<Current, Config, Ts...>{}>())>();
+    Ignore<decltype(Use<Current, DependencyInfoInjector<Current, Name, Config, Ts...>{}>())>();
   };
 };
 
@@ -544,8 +553,8 @@ struct ServiceContextBuilder {
       return DependencyGraph<DependencyGraphElement<names, 
         []<utempl::ConstexprString name, typename Component, ::cserver::Options OOptions>
         (ComponentConfig<name, Component, OOptions>) {
-          impl::DependencyInfoInjector<Component, config, ComponentConfigs...> injector;
-          injector.template Inject<name>();
+          impl::DependencyInfoInjector<Component, name, config, ComponentConfigs...> injector;
+          injector.Inject();
           return injector.GetDependencies();
         }(ComponentConfigs{})>...>{};
     }(ComponentConfigs{}...);
