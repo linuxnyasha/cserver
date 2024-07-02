@@ -11,3 +11,4 @@ cmake_install.cmake
 compile_commands.json
 cserverConfig.cmake
 cserverConfigVersion.cmake
+install_manifest.txt
