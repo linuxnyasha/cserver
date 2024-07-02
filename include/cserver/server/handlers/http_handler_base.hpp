@@ -4,10 +4,11 @@
 #include <cserver/server/http/http_response.hpp>
 #include <cserver/server/http/http_stream.hpp>
 #include <cserver/engine/coroutine.hpp>
+#include <cserver/components/loggable_component_base.hpp>
 
 namespace cserver::server::handlers {
 
-struct HttpHandlerBase {
+struct HttpHandlerBase : ComponentBase {
   template <typename T, utempl::ConstexprString name, Options Options>
   static consteval auto HttpHandlerAdder(const auto& context) {
     return context.TransformComponents([]<typename TT>(const ComponentConfig<T::kHandlerManagerName, TT, Options>) {
@@ -21,9 +22,9 @@ struct HttpHandlerBase {
     try {
       co_return co_await std::forward<Self>(self).HandleRequestThrow(std::move(request));
     } catch(const std::exception& err) {
-      fmt::println("Error in handler with default name {}: {}", T::kName, err.what());
+      self.logging.template Warning<"Error in handler with default name {}: {}">(T::kName, err.what());
     } catch(...) {
-      fmt::println("Error in handler with default name {}: Unknown Error", T::kName);
+      self.logging.template Warning<"Error in handler with default name {}: Unknown Error">(T::kName);
     };
     co_return http::HttpResponse{.statusCode = 500, .statusMessage = "Internal Server Error", .body = "Internal Server Error"};
   };
@@ -34,13 +35,14 @@ struct HttpHandlerBase {
     try {
       co_await std::forward<Self>(self).HandleRequestStreamThrow(std::move(request), stream);
     } catch(const std::exception& err) {
-      fmt::println("Error in handler with default name {}: {}", T::kName, err.what());
+      self.logging.template Warning<"Error in handler with default name {}: {}">(T::kName, err.what());
     } catch(...) {
-      fmt::println("Error in handler with default name {}: Unknown Error", T::kName);
+      self.logging.template Warning<"Error in handler with default name {}: Unknown Error">(T::kName);
     };
     co_await stream.Close();
   };
-  inline constexpr HttpHandlerBase(auto&) {};
+  inline constexpr HttpHandlerBase(auto& context) :
+      ComponentBase(context) {};
 };
 template <typename T>
 struct HttpHandlerAdderType {

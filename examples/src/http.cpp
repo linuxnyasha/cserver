@@ -17,9 +17,12 @@ struct SomeComponent : public cserver::server::handlers::HttpHandlerBaseWithAdde
 auto main() -> int {
   cserver::ServiceContextBuilder{}
     .AppendConfigParam<"threads", 8>()
+    .AppendConfigParam<"logging", cserver::ConstexprConfig{}
+      .Append<"level">(cserver::LoggingLevel::kWarning)>()
     .AppendConfigParam<"server", cserver::ConstexprConfig{}
       .Append<"taskProcessor">(utempl::ConstexprString{"basicTaskProcessor"})
       .Append<"port">(55555)>()
+    .Append<cserver::Logging>()
     .Append<cserver::server::server::Server<>>()
     .Append<SomeComponent, "component">()
     .Sort()
