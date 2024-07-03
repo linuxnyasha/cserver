@@ -516,6 +516,7 @@ consteval auto TopologicalSort(const DependencyGraph<DependencyGraphElement<Name
 template <ConstexprConfig config = {}, typename... ComponentConfigs>
 struct ServiceContextBuilder {
   static constexpr auto kList = utempl::kTypeList<ComponentConfigs...>;
+  static constexpr impl::DependenciesUtils<ComponentConfigs...> kUtils;
   static constexpr auto kConfig = config;
   template <typename T, utempl::ConstexprString name = T::kName, typename... Os>
   static consteval auto Append(Options<Os...> = {}) -> decltype(T::template Adder<name, Options<Os...>{}>(ServiceContextBuilder<config, ComponentConfigs..., ComponentConfig<name, T, Options<Os...>{}>>{})) {
@@ -552,6 +553,23 @@ struct ServiceContextBuilder {
       }(ServiceContextBuilder<config, ComponentConfigs...>{});
     };
   };
+
+  template <template <typename...> typename F>
+  static consteval auto FindComponent() {
+    return Get<kUtils.template GetFirstIndex<F>()>(kUtils.kTypeList);
+  };
+
+  template <template <typename...> typename F>
+  static consteval auto FindAllComponents() {
+    return utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(), 
+                          [](auto... is) -> utempl::Tuple<typename decltype(Get<is>(utempl::kTypeList<ComponentConfigs...>))::Type...> {
+                            std::unreachable();
+                          });
+  };
+  
+
+
+
   static consteval auto Config() {
     return config;
   };
