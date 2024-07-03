@@ -3,6 +3,8 @@
 #include <cserver/engine/coroutine.hpp>
 #include <utempl/utils.hpp>
 #include <utempl/loopholes/counter.hpp>
+#include <cxxabi.h>
+#include <boost/core/demangle.hpp>
 
 namespace cserver {
 
@@ -205,10 +207,17 @@ inline constexpr auto InitComponents(T& ccontext, int ac, const char** av) -> vo
           Get<Is>(context.storage).emplace(currentContext);
         };
       } catch(std::exception& error) {
-        fmt::println("An error occurred while initializing component {}: {}", static_cast<std::string_view>(Current::kName), error.what());
+        auto typeName = boost::core::demangle(__cxxabiv1::__cxa_current_exception_type()->name());
+        fmt::println("{} initialisation:\n  terminating due to uncaught exception of type {}: {}",
+                     static_cast<std::string_view>(Current::kName),
+                     typeName,
+                     error.what());
         ioContext.stop();
       } catch(...) {
-        fmt::println("An unknown error occurred while initializing component {}", static_cast<std::string_view>(Current::kName));
+        auto typeName = boost::core::demangle(__cxxabiv1::__cxa_current_exception_type()->name());
+        fmt::println("{} initialisation:\n  terminating due to uncaught exception of type {}",
+                     static_cast<std::string_view>(Current::kName),
+                     typeName);
         ioContext.stop();
       };
       auto& componentInitFlag = GetInitFlagFor<AsyncConditionVariable, Is>(ioContext);

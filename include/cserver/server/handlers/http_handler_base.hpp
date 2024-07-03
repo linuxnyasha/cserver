@@ -23,9 +23,11 @@ struct HttpHandlerBase : ComponentBase {
     try {
       co_return co_await std::forward<Self>(self).HandleRequestThrow(std::move(request));
     } catch(const std::exception& err) {
-      self.logging.template Warning<"Error in handler with default name {}: {}">(T::kName, err.what());
+      auto typeName = boost::core::demangle(__cxxabiv1::__cxa_current_exception_type()->name());
+      self.logging.template Warning<"In handler with default name {} uncaught exception of type {}: {}">(T::kName, typeName, err.what());
     } catch(...) {
-      self.logging.template Warning<"Error in handler with default name {}: Unknown Error">(T::kName);
+      auto typeName = boost::core::demangle(__cxxabiv1::__cxa_current_exception_type()->name());
+      self.logging.template Warning<"In handler with default name {} uncaught exception of type {}">(T::kName, typeName);
     };
     co_return http::HttpResponse{.statusCode = 500, .statusMessage = "Internal Server Error", .body = "Internal Server Error"};
   };
