@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <cserver/engine/components.hpp>
-#include <boost/type_index.hpp>
+#include <nameof.hpp>
 
 COMPONENT_REQUIRES(Some, requires(T t){{t.f()} -> std::same_as<void>;});
 
@@ -43,8 +43,8 @@ TEST(Meta, OneDependency) {
                     "other2",
                     {}>>;
 
-  EXPECT_EQ(boost::typeindex::type_id<decltype(dependencies)>().pretty_name(),
-            boost::typeindex::type_id<Need>().pretty_name());
+  EXPECT_EQ(NAMEOF_TYPE(decltype(dependencies)),
+            NAMEOF_TYPE(Need));
 };
 
 struct SomeStruct2 {

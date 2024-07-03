@@ -3,7 +3,7 @@
 #include <cserver/engine/not_implemented.hpp>
 #include <cserver/engine/components.hpp>
 #include <boost/program_options.hpp>
-#include <boost/type_index.hpp>
+#include <nameof.hpp>
 #include <iostream>
 
 namespace cserver::cli {
@@ -44,7 +44,7 @@ struct Manager {
     ([&]{
       using Current = decltype(Configs)::Type;
       boost::program_options::options_description desc(fmt::format("{} options",
-                                                                  boost::typeindex::type_id<Current>().pretty_name()));
+                                                                  NAMEOF_TYPE(Current)));
       utempl::Unpack(utempl::PackConstexprWrapper<decltype(Configs)::kValue>(), [&](auto... vs) {
         auto&& add = desc.add_options();
         ([&]{

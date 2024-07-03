@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <cserver/engine/components.hpp>
-#include <boost/type_index.hpp>
+#include <nameof.hpp>
 
 struct SomeComponent {
   static constexpr utempl::ConstexprString kName = "some";
@@ -30,6 +30,6 @@ TEST(Dependencies, Get) {
                   cserver::DependencyGraphElement<
                     "other",
                     {utempl::ConstexprString{"some"}}>>;
-  EXPECT_EQ(boost::typeindex::type_id<decltype(dependencies)>().pretty_name(),
-            boost::typeindex::type_id<Need>().pretty_name());
+  EXPECT_EQ(NAMEOF_TYPE(decltype(dependencies)),
+            NAMEOF_TYPE(Need));
 };

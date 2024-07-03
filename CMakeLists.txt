@@ -10,6 +10,8 @@ find_package(Boost 1.84.0 REQUIRED COMPONENTS url program_options)
 find_package(utempl REQUIRED)
 find_package(llhttp REQUIRED)
 find_package(OpenSSL REQUIRED)
+find_package(nameof REQUIRED)
+
 
 cmake_policy(SET CMP0079 NEW)
 
@@ -19,7 +21,7 @@ target_include_directories(
   cserver
   INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(cserver INTERFACE utempl::utempl ${Boost_LIBRARIES} llhttp ${OPENSSL_LIBRARIES} )
+target_link_libraries(cserver INTERFACE utempl::utempl nameof::nameof ${Boost_LIBRARIES} llhttp ${OPENSSL_LIBRARIES} )
 
 target_compile_features(cserver INTERFACE cxx_std_23)
 
