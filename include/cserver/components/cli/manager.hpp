@@ -1,10 +1,10 @@
 #pragma once
-#include <utempl/optional.hpp>
-#include <cserver/engine/not_implemented.hpp>
-#include <cserver/engine/components.hpp>
 #include <boost/program_options.hpp>
-#include <nameof.hpp>
+#include <cserver/engine/components.hpp>
+#include <cserver/engine/not_implemented.hpp>
 #include <iostream>
+#include <nameof.hpp>
+#include <utempl/optional.hpp>
 
 namespace cserver::cli {
 
@@ -22,25 +22,19 @@ struct StructConfig {
   static constexpr auto kValue = utempl::Tuple{Configs...};
 };
 
-
-
-
 template <typename T, std::size_t N, std::size_t NN>
-consteval auto CreateOptionConfig(utempl::ConstexprString<N> name,
-                                  utempl::ConstexprString<NN> description) -> OptionConfig<N, NN, T> {
+consteval auto CreateOptionConfig(utempl::ConstexprString<N> name, utempl::ConstexprString<NN> description) -> OptionConfig<N, NN, T> {
   return {name, description};
 };
-
-
 
 template <StructConfig... Configs>
 struct Manager {
   boost::program_options::variables_map variableMap;
   static constexpr utempl::ConstexprString kName = "cliManager";
-  constexpr Manager(auto& context) {
+  explicit constexpr Manager(auto& context) {
     boost::program_options::options_description general("General options");
-    general.add_options()
-      ("help,h", "Show help");
+    general.add_options()("help,h", "Show help");
+    // clang-format off
     ([&]{
       using Current = decltype(Configs)::Type;
       boost::program_options::options_description desc(fmt::format("{} options",
@@ -48,7 +42,6 @@ struct Manager {
       utempl::Unpack(utempl::PackConstexprWrapper<decltype(Configs)::kValue>(), [&](auto... vs) {
         auto&& add = desc.add_options();
         ([&]{
-          //static_assert((std::ignore = utempl::kWrapper<*vs>, false));
           if constexpr((*vs).description.size() == 0) {
             add((*vs).name.data.begin(),
                 boost::program_options::value<typename decltype(*vs)::Type>());
@@ -61,6 +54,7 @@ struct Manager {
       });
       general.add(desc);
     }(), ...);
+    // clang-format-on
     boost::program_options::store(boost::program_options::parse_command_line(context.argc, context.argv, general), this->variableMap);
     boost::program_options::notify(this->variableMap);
     if(this->variableMap.count("help")) {

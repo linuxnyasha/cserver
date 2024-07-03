@@ -1,16 +1,17 @@
 #pragma once
-#include <unordered_map>
 #include <fmt/format.h>
+
 #include <sstream>
+#include <unordered_map>
 
 namespace cserver::server::http {
 
 struct HttpResponse {
-  unsigned short statusCode = 200;
+  std::uint16_t statusCode = 200;  // NOLINT
   std::string statusMessage = "OK";
   std::unordered_map<std::string, std::string> headers = {};
   std::string body = {};
-  inline auto ToString() const -> std::string {
+  [[nodiscard]] inline auto ToString() const -> std::string {
     std::ostringstream stream;
     stream << fmt::format("Http/1.1 {} {}\r\n", this->statusCode, this->statusMessage);
     for(const auto& header : this->headers) {
@@ -23,4 +24,4 @@ struct HttpResponse {
   };
 };
 
-} // namespace cserver::server::http
+}  // namespace cserver::server::http

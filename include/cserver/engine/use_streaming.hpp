@@ -6,4 +6,4 @@ struct UseStreaming {};
 
 inline constexpr auto kUseStreaming = UseStreaming{};
 
-} // namespace cserver
+}  // namespace cserver

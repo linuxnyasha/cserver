@@ -1,9 +1,9 @@
 #pragma once
-#include <cserver/engine/not_implemented.hpp>
-#include <cserver/engine/components.hpp>
-#include <cserver/components/cli/manager.hpp>
-#include <utempl/attributes.hpp>
 #include <boost/pfr.hpp>
+#include <cserver/components/cli/manager.hpp>
+#include <cserver/engine/components.hpp>
+#include <cserver/engine/not_implemented.hpp>
+#include <utempl/attributes.hpp>
 
 namespace cserver::cli {
 
@@ -17,31 +17,27 @@ struct Description {
   static constexpr utempl::ConstexprString kValue = Value;
 };
 
-
 template <typename T>
 struct IsNameM {
   static constexpr bool value = utempl::Overloaded(
-    []<utempl::ConstexprString V>(utempl::TypeList<Name<V>>) {
-      return true;
-    },
-    [](auto) {return false;}
-  )(utempl::kType<T>);
+      []<utempl::ConstexprString V>(utempl::TypeList<Name<V>>) {
+        return true;
+      },
+      [](auto) {
+        return false;
+      })(utempl::kType<T>);
 };
 
 template <typename T>
 struct IsDescriptionM {
   static constexpr bool value = utempl::Overloaded(
-    []<utempl::ConstexprString V>(utempl::TypeList<Description<V>>) {
-      return true;
-    },
-    [](auto) {return false;}
-  )(utempl::kType<T>);
+      []<utempl::ConstexprString V>(utempl::TypeList<Description<V>>) {
+        return true;
+      },
+      [](auto) {
+        return false;
+      })(utempl::kType<T>);
 };
-
-
-
-
-
 
 template <typename Self, typename T>
 struct Struct : T {
@@ -61,23 +57,18 @@ struct Struct : T {
     };
   };
 
-
   static consteval auto GetConfig() {
     static constexpr auto names = boost::pfr::names_as_array<T>();
     return [&](auto... is) {
       return StructConfig<Self, [&] {
         return CreateOptionConfig<std::remove_reference_t<decltype(boost::pfr::get<is>(std::declval<T&>()))>>(
-          GetFirstOrDefault<is, IsNameM>(utempl::ConstexprString<names[is].size() + 1>(names[is].data())),
-          GetFirstOrDefault<is, IsDescriptionM>(utempl::ConstexprString<0>{}));
+            GetFirstOrDefault<is, IsNameM>(utempl::ConstexprString<names[is].size() + 1>(names[is].data())),
+            GetFirstOrDefault<is, IsDescriptionM>(utempl::ConstexprString<0>{}));
       }()...>{};
     } | utempl::kSeq<boost::pfr::tuple_size_v<T>>;
   };
 
-
-  constexpr Struct(auto& context) : 
-      T(context.template FindComponent<Self::kCliManagerName>().template Get<GetConfig()>()) {};
-
-
+  explicit constexpr Struct(auto& context) : T(context.template FindComponent<Self::kCliManagerName>().template Get<GetConfig()>()) {};
 
   template <utempl::ConstexprString Name, Options>
   static consteval auto CliStructAdder(const auto& context) {
@@ -96,4 +87,4 @@ struct StructWithAdder : Struct<Self, T> {
   };
 };
 
-} // namespace cserver::cli
+}  // namespace cserver::cli

@@ -18,7 +18,7 @@ struct SetThreadId : public std::suspend_never {
   std::size_t threadId;
 };
 
-} // namespace this_coro
+}  // namespace this_coro
 
 template <typename T = void>
 using Task = boost::asio::awaitable<T>;
@@ -26,7 +26,7 @@ using Task = boost::asio::awaitable<T>;
 template <typename...>
 struct TaskAwaitable {};
 
-} // namespace cserver
+}  // namespace cserver
 
 namespace boost::asio::detail {
 /*
@@ -58,23 +58,22 @@ DEALINGS IN THE SOFTWARE.
 */
 template <>
 struct awaitable_frame_base<any_io_executor> {
-public:
+ public:
   using Executor = any_io_executor;
 #if !defined(BOOST_ASIO_DISABLE_AWAITABLE_FRAME_RECYCLING)
   inline auto operator new(std::size_t size) -> void* {
-    return boost::asio::detail::thread_info_base::allocate(
-        boost::asio::detail::thread_info_base::awaitable_frame_tag(),
-        boost::asio::detail::thread_context::top_of_thread_call_stack(),
-        size);
+    return boost::asio::detail::thread_info_base::allocate(boost::asio::detail::thread_info_base::awaitable_frame_tag(),
+                                                           boost::asio::detail::thread_context::top_of_thread_call_stack(),
+                                                           size);
   };
 
   inline auto operator delete(void* pointer, std::size_t size) -> void {
-    boost::asio::detail::thread_info_base::deallocate(
-        boost::asio::detail::thread_info_base::awaitable_frame_tag(),
-        boost::asio::detail::thread_context::top_of_thread_call_stack(),
-        pointer, size);
+    boost::asio::detail::thread_info_base::deallocate(boost::asio::detail::thread_info_base::awaitable_frame_tag(),
+                                                      boost::asio::detail::thread_context::top_of_thread_call_stack(),
+                                                      pointer,
+                                                      size);
   };
-#endif // !defined(BOOST_ASIO_DISABLE_AWAITABLE_FRAME_RECYCLING)
+#endif  // !defined(BOOST_ASIO_DISABLE_AWAITABLE_FRAME_RECYCLING)
 
   // The frame starts in a suspended state until the awaitable_thread object
   // pumps the stack.
@@ -124,8 +123,8 @@ public:
 
   template <typename T>
   inline constexpr auto await_transform(awaitable<T, Executor> a) const -> awaitable<T, Executor> {
-    if (attached_thread_->entry_point()->throw_if_cancelled_) {
-      if (!!attached_thread_->get_cancellation_state().cancelled()) {
+    if(attached_thread_->entry_point()->throw_if_cancelled_) {
+      if(!!attached_thread_->get_cancellation_state().cancelled()) {
         throw_error(boost::asio::error::operation_aborted, "co_await");
       };
     };
@@ -134,28 +133,29 @@ public:
 
   template <typename Op>
   inline constexpr auto await_transform(Op&& op,
-      constraint_t<is_async_operation<Op>::value> = 0
+                                        constraint_t<is_async_operation<Op>::value> = 0
 #if defined(BOOST_ASIO_ENABLE_HANDLER_TRACKING)
-# if defined(BOOST_ASIO_HAS_SOURCE_LOCATION)
-      , detail::source_location location = detail::source_location::current()
-# endif // defined(BOOST_ASIO_HAS_SOURCE_LOCATION)
-#endif // defined(BOOST_ASIO_ENABLE_HANDLER_TRACKING)
-    ) {
-    if (attached_thread_->entry_point()->throw_if_cancelled_) {
-      if (!!attached_thread_->get_cancellation_state().cancelled()) {
+#if defined(BOOST_ASIO_HAS_SOURCE_LOCATION)
+                                        ,
+                                        detail::source_location location = detail::source_location::current()
+#endif  // defined(BOOST_ASIO_HAS_SOURCE_LOCATION)
+#endif  // defined(BOOST_ASIO_ENABLE_HANDLER_TRACKING)
+  ) {
+    if(attached_thread_->entry_point()->throw_if_cancelled_) {
+      if(!!attached_thread_->get_cancellation_state().cancelled()) {
         throw_error(boost::asio::error::operation_aborted, "co_await");
       };
     };
 
-    return awaitable_async_op<
-      completion_signature_of_t<Op>, decay_t<Op>, Executor>{
-        std::forward<Op>(op), this
+    return awaitable_async_op<completion_signature_of_t<Op>, decay_t<Op>, Executor>{std::forward<Op>(op),
+                                                                                    this
 #if defined(BOOST_ASIO_ENABLE_HANDLER_TRACKING)
-# if defined(BOOST_ASIO_HAS_SOURCE_LOCATION)
-        , location
-# endif // defined(BOOST_ASIO_HAS_SOURCE_LOCATION)
-#endif // defined(BOOST_ASIO_ENABLE_HANDLER_TRACKING)
-      };
+#if defined(BOOST_ASIO_HAS_SOURCE_LOCATION)
+                                                                                    ,
+                                                                                    location
+#endif  // defined(BOOST_ASIO_HAS_SOURCE_LOCATION)
+#endif  // defined(BOOST_ASIO_ENABLE_HANDLER_TRACKING)
+    };
   };
 
   // This await transformation obtains the associated executor of the thread of
@@ -168,7 +168,7 @@ public:
         return true;
       };
 
-      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {};
+      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void{};
 
       inline auto await_resume() const noexcept {
         return this_->attached_thread_->get_executor();
@@ -188,7 +188,7 @@ public:
         return true;
       };
 
-      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {};
+      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void{};
 
       auto await_resume() const noexcept {
         return this_->attached_thread_->get_cancellation_state();
@@ -207,7 +207,7 @@ public:
         return true;
       };
 
-      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {};
+      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void{};
 
       inline constexpr auto await_resume() const {
         return this_->attached_thread_->reset_cancellation_state();
@@ -219,8 +219,7 @@ public:
 
   // This await transformation resets the associated cancellation state.
   template <typename Filter>
-  inline constexpr auto await_transform(
-      this_coro::reset_cancellation_state_1_t<Filter> reset) noexcept {
+  inline constexpr auto await_transform(this_coro::reset_cancellation_state_1_t<Filter> reset) noexcept {
     struct Result {
       awaitable_frame_base* this_;
       Filter filter_;
@@ -229,11 +228,10 @@ public:
         return true;
       };
 
-      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {};
+      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void{};
 
       inline constexpr auto await_resume() {
-        return this_->attached_thread_->reset_cancellation_state(
-            static_cast<Filter&&>(filter_));
+        return this_->attached_thread_->reset_cancellation_state(static_cast<Filter&&>(filter_));
       };
     };
 
@@ -246,8 +244,7 @@ public:
 
   // This await transformation resets the associated cancellation state.
   template <typename InFilter, typename OutFilter>
-  inline constexpr auto await_transform(
-      this_coro::reset_cancellation_state_2_t<InFilter, OutFilter> reset) noexcept {
+  inline constexpr auto await_transform(this_coro::reset_cancellation_state_2_t<InFilter, OutFilter> reset) noexcept {
     struct Result {
       awaitable_frame_base* this_;
       InFilter in_filter_;
@@ -256,19 +253,16 @@ public:
       inline constexpr auto await_ready() const noexcept -> bool {
         return true;
       };
-  
-      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {};
+
+      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void{};
 
       inline constexpr auto await_resume() {
-        return this_->attached_thread_->reset_cancellation_state(
-            static_cast<InFilter&&>(in_filter_),
-            static_cast<OutFilter&&>(out_filter_));
+        return this_->attached_thread_->reset_cancellation_state(static_cast<InFilter&&>(in_filter_),
+                                                                 static_cast<OutFilter&&>(out_filter_));
       };
     };
 
-    return Result{this,
-        static_cast<InFilter&&>(reset.in_filter),
-        static_cast<OutFilter&&>(reset.out_filter)};
+    return Result{this, static_cast<InFilter&&>(reset.in_filter), static_cast<OutFilter&&>(reset.out_filter)};
   };
 
   // This await transformation determines whether cancellation is propagated as
@@ -281,7 +275,7 @@ public:
         return true;
       };
 
-      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {};
+      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void{};
 
       inline constexpr auto await_resume() {
         return this_->attached_thread_->throw_if_cancelled();
@@ -302,7 +296,7 @@ public:
         return true;
       };
 
-      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {};
+      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void{};
 
       inline constexpr auto await_resume() {
         this_->attached_thread_->throw_if_cancelled(value_);
@@ -317,13 +311,9 @@ public:
   // immediate resumption of the coroutine in another thread does not cause a
   // race condition.
   template <typename Function>
-  inline constexpr auto await_transform(Function f,
-      enable_if_t<
-        is_convertible<
-          result_of_t<Function(awaitable_frame_base*)>,
-          awaitable_thread<Executor>*
-        >::value
-      >* = nullptr) {
+  inline constexpr auto await_transform(
+      Function f,
+      enable_if_t<is_convertible<result_of_t<Function(awaitable_frame_base*)>, awaitable_thread<Executor>*>::value>* = nullptr) {
     struct Result {
       Function function_;
       awaitable_frame_base* this_;
@@ -334,11 +324,11 @@ public:
 
       inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {
         this_->after_suspend(
-            [](void* arg)
-            {
+            [](void* arg) {
               Result* r = static_cast<Result*>(arg);
               r->function_(r->this_);
-            }, this);
+            },
+            this);
       };
 
       inline constexpr auto await_resume() const noexcept -> void {};
@@ -356,7 +346,7 @@ public:
         return true;
       };
 
-      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void {};
+      inline constexpr auto await_suspend(coroutine_handle<void>) noexcept -> void{};
 
       inline constexpr auto await_resume() const noexcept -> bool& {
         return this_->attached_thread_->entry_point()->has_context_switched_;
@@ -370,7 +360,7 @@ public:
     attached_thread_ = handler;
   };
 
-  inline constexpr auto detach_thread() noexcept ->awaitable_thread<Executor>* {
+  inline constexpr auto detach_thread() noexcept -> awaitable_thread<Executor>* {
     attached_thread_->entry_point()->has_context_switched_ = true;
     return std::exchange(attached_thread_, nullptr);
   };
@@ -384,7 +374,7 @@ public:
   };
 
   inline constexpr auto pop_frame() noexcept -> void {
-    if (caller_) {
+    if(caller_) {
       caller_->attached_thread_ = attached_thread_;
     };
     attached_thread_->entry_point()->top_of_stack_ = caller_;
@@ -394,14 +384,14 @@ public:
 
   struct resume_context {
     void (*after_suspend_fn_)(void*) = nullptr;
-    void *after_suspend_arg_ = nullptr;
+    void* after_suspend_arg_ = nullptr;
   };
 
   inline constexpr auto resume() -> void {
     resume_context context;
     resume_context_ = &context;
     coro_.resume();
-    if (context.after_suspend_fn_) {
+    if(context.after_suspend_fn_) {
       context.after_suspend_fn_(context.after_suspend_arg_);
     };
   };
@@ -424,7 +414,8 @@ public:
     return awaitable;
   };
   std::size_t threadId{};
-protected:
+
+ protected:
   coroutine_handle<void> coro_ = nullptr;
   awaitable_thread<Executor>* attached_thread_ = nullptr;
   awaitable_frame_base<Executor>* caller_ = nullptr;
@@ -432,4 +423,4 @@ protected:
   resume_context* resume_context_ = nullptr;
 };
 
-} // namespace boost::asio::detail
+}  // namespace boost::asio::detail

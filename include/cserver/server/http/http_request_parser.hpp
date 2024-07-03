@@ -1,6 +1,7 @@
 #pragma once
-#include <cserver/server/http/http_request.hpp>
 #include <llhttp.h>
+
+#include <cserver/server/http/http_request.hpp>
 
 namespace cserver::server::http {
 
@@ -10,7 +11,7 @@ struct HttpRequestParser : private llhttp_t, public HttpRequest {
   std::string headerField = {};
   std::string headerValue = {};
   std::string urlString = {};
-  inline HttpRequestParser(std::string_view data) {
+  inline HttpRequestParser(std::string_view data) {  // NOLINT
     llhttp_settings_t settings;
     llhttp_settings_init(&settings);
     settings.on_method = HttpRequestParser::OnMethod;
@@ -25,44 +26,44 @@ struct HttpRequestParser : private llhttp_t, public HttpRequest {
     llhttp_execute(this, data.data(), data.size());
   };
   static inline auto OnMethod(llhttp_t* parser, const char* data, std::size_t size) -> int {
-    auto* self = static_cast<HttpRequest*>(static_cast<HttpRequestParser*>(parser));
+    auto* self = static_cast<HttpRequest*>(static_cast<HttpRequestParser*>(parser));  // NOLINT
     self->method.append(data, size);
     return 0;
   };
   static inline auto OnUrl(llhttp_t* parser, const char* data, std::size_t size) -> int {
-    auto* self = static_cast<HttpRequestParser*>(parser);
+    auto* self = static_cast<HttpRequestParser*>(parser);  // NOLINT
     self->urlString.append(data, size);
     return 0;
   };
   static inline auto OnUrlComplete(llhttp_t* parser) -> int {
-    auto* self = static_cast<HttpRequestParser*>(parser);
+    auto* self = static_cast<HttpRequestParser*>(parser);  // NOLINT
     self->url = boost::urls::url(self->urlString);
     return 0;
   };
   static inline auto OnHeaderField(llhttp_t* parser, const char* data, std::size_t size) -> int {
-    auto* self = static_cast<HttpRequestParser*>(parser);
+    auto* self = static_cast<HttpRequestParser*>(parser);  // NOLINT
     self->headerField.append(data, size);
     return 0;
   };
   static inline auto OnHeaderValue(llhttp_t* parser, const char* data, std::size_t size) -> int {
-    auto* self = static_cast<HttpRequestParser*>(parser);
+    auto* self = static_cast<HttpRequestParser*>(parser);  // NOLINT
     self->headerValue.append(data, size);
     return 0;
   };
   static inline auto OnHeaderComplete(llhttp_t* parser) -> int {
-    auto* self = static_cast<HttpRequestParser*>(parser);
+    auto* self = static_cast<HttpRequestParser*>(parser);  // NOLINT
     self->headers.emplace(std::move(self->headerField), std::move(self->headerValue));
     self->headerValue.clear();
     self->headerField.clear();
     return 0;
   };
   static inline auto OnBody(llhttp_t* parser, const char* data, std::size_t size) -> int {
-    auto* self = static_cast<HttpRequestParser*>(parser);
+    auto* self = static_cast<HttpRequestParser*>(parser);  // NOLINT
     self->body.append(data, size);
     return 0;
   };
   static inline auto OnMessageComplete(llhttp_t* parser) -> int {
-    auto* self = static_cast<HttpRequestParser*>(parser);
+    auto* self = static_cast<HttpRequestParser*>(parser);  // NOLINT
     self->done = true;
     return 0;
   };

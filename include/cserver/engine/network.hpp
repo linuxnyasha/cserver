@@ -9,15 +9,16 @@ class TcpResolver;
 
 class IoContext {
   boost::asio::io_context impl;
-public:
-  inline constexpr IoContext() : impl() {};
+
+ public:
+  inline IoContext() : impl() {};
   class Work {
     boost::asio::io_context::work impl;
-  public:
-    inline constexpr Work(IoContext& ioContext) :
-      impl(ioContext.impl) {};
-    inline constexpr Work(Work&&) = default;
-    inline constexpr Work(const Work&) = default;
+
+   public:
+    explicit inline Work(IoContext& ioContext) : impl(ioContext.impl) {};
+    inline Work(Work&&) = default;
+    inline Work(const Work&) = default;
   };
 
   friend DeadLineTimer;
@@ -26,13 +27,12 @@ public:
   friend TcpResolver;
 };
 
-
 class DeadLineTimer {
   boost::asio::deadline_timer impl;
-public:
-  inline constexpr DeadLineTimer(IoContext& ioContext) : 
-      impl(ioContext.impl) {};
-  inline constexpr auto AsyncWait() -> Task<> {
+
+ public:
+  explicit inline DeadLineTimer(IoContext& ioContext) : impl(ioContext.impl) {};
+  inline auto AsyncWait() -> Task<> {
     return this->impl.async_wait(boost::asio::use_awaitable);
   };
   inline constexpr auto Cancel() -> void {
@@ -45,11 +45,10 @@ public:
 
 class TcpSocket {
   boost::asio::ip::tcp::socket impl;
-public:
-  inline constexpr TcpSocket(IoContext& ioContext) :
-    impl(ioContext.impl) {};
-  inline constexpr TcpSocket(TcpSocket&& other) :
-    impl(std::move(other.impl)) {};
+
+ public:
+  explicit inline TcpSocket(IoContext& ioContext) : impl(ioContext.impl) {};
+  inline TcpSocket(TcpSocket&& other) : impl(std::move(other.impl)) {};
 
   template <typename Buffer, typename CompletionCondition>
   friend inline constexpr auto AsyncWrite(TcpSocket& socket, Buffer buffer, CompletionCondition completion);
@@ -68,40 +67,38 @@ class TcpEntry;
 
 class TcpEndpoint {
   boost::asio::ip::tcp::endpoint impl;
-  inline constexpr TcpEndpoint(boost::asio::ip::tcp::endpoint impl) : impl(std::move(impl)) {};
-public:
+  explicit inline TcpEndpoint(boost::asio::ip::tcp::endpoint impl) : impl(std::move(impl)) {};
+
+ public:
   friend TcpEntry;
 };
 
-
 class TcpEntry {
   boost::asio::ip::tcp::resolver::results_type::value_type impl;
-public:
-  inline constexpr TcpEntry() = default;
-  inline constexpr TcpEntry(const TcpEndpoint& ep,
-                            std::string_view host,
-                            std::string_view service) : impl(ep.impl, host, service) {};
-  inline constexpr auto Endpoint() -> TcpEndpoint {
-    return {this->impl.endpoint()};
+
+ public:
+  inline TcpEntry() = default;
+  inline TcpEntry(const TcpEndpoint& ep, std::string_view host, std::string_view service) : impl(ep.impl, host, service) {};
+  inline auto Endpoint() -> TcpEndpoint {
+    return TcpEndpoint{this->impl.endpoint()};
   };
-  inline constexpr auto HostName() -> std::string {
+  inline auto HostName() -> std::string {
     return this->impl.host_name();
   };
   inline constexpr auto ServiceName() -> std::string {
     return this->impl.service_name();
   };
-  inline constexpr operator TcpEndpoint() {
-    return {this->impl};
+  explicit inline operator TcpEndpoint() {
+    return TcpEndpoint{this->impl};
   };
 };
 
-
 class TcpResolver {
   boost::asio::ip::tcp::resolver impl;
-public:
-  inline constexpr TcpResolver(IoContext& ioContext) : impl(ioContext.impl) {};
-};
 
+ public:
+  explicit inline TcpResolver(IoContext& ioContext) : impl(ioContext.impl) {};
+};
 
 template <typename T>
 inline constexpr auto Buffer(const T* ptr, std::size_t size) {
@@ -113,34 +110,33 @@ inline constexpr auto DynamicBuffer(T&& arg) -> decltype(boost::asio::dynamic_bu
   return boost::asio::dynamic_buffer(std::forward<T>(arg));
 };
 
-
 template <typename Socket, typename Buffer>
-inline constexpr auto AsyncWrite(Socket&& socket, Buffer buffer) -> Task<> {
+inline auto AsyncWrite(Socket&& socket, Buffer buffer) -> Task<> {
   return boost::asio::async_write(std::forward<Socket>(socket).impl, std::move(buffer), boost::asio::use_awaitable);
 };
 
 template <typename Socket, typename Buffer, typename CompletionCondition>
-inline constexpr auto AsyncWrite(Socket&& socket, Buffer buffer, CompletionCondition completion) -> Task<> {
+inline auto AsyncWrite(Socket&& socket, Buffer buffer, CompletionCondition completion) -> Task<> {
   return boost::asio::async_write(std::forward<Socket>(socket).impl, std::move(buffer), std::move(completion), boost::asio::use_awaitable);
 };
 
 template <typename Socket, typename Buffer>
-inline constexpr auto AsyncRead(Socket&& socket, Buffer buffer) -> Task<> {
+inline auto AsyncRead(Socket&& socket, Buffer buffer) -> Task<> {
   return boost::asio::async_read(std::forward<Socket>(socket).impl, std::move(buffer), boost::asio::use_awaitable);
 };
 
 template <typename Socket, typename Buffer, typename CompletionCondition>
-inline constexpr auto AsyncRead(Socket&& socket, Buffer buffer, CompletionCondition completion) -> Task<> {
+inline auto AsyncRead(Socket&& socket, Buffer buffer, CompletionCondition completion) -> Task<> {
   return boost::asio::async_read(std::forward<Socket>(socket).impl, std::move(buffer), std::move(completion), boost::asio::use_awaitable);
 };
 
 template <typename Socket, typename Buffer, typename Match>
-inline constexpr auto AsyncReadUntil(Socket&& socket, Buffer buffer, Match match) -> Task<> {
+inline auto AsyncReadUntil(Socket&& socket, Buffer buffer, Match match) -> Task<> {
   return boost::asio::async_read_until(std::forward<Socket>(socket).impl, std::move(buffer), std::move(match), boost::asio::use_awaitable);
 };
 
-inline constexpr auto TransferAll() {
+inline auto TransferAll() {
   return boost::asio::transfer_all();
 };
 
-} // namespace cserver::network
+}  // namespace cserver::network
