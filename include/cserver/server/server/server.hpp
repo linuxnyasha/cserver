@@ -72,7 +72,7 @@ struct Server : StopBlocker {
           ...);
     }(std::index_sequence_for<Ts...>());
     constexpr std::string_view error404 =
-        "Http/1.1 404 Not Found\r\n"
+        "HTTP/1.1 404 Not Found\r\n"
         "Content-Length: 0\r\n"
         "\r\n";
     if(!flag) {

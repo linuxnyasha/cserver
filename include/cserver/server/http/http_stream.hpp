@@ -15,7 +15,7 @@ struct HttpStream {
         this->socket, boost::asio::buffer(method.data(), method.size()), boost::asio::transfer_all(), boost::asio::use_awaitable);
   };
   inline auto SetStatus(std::string status) -> Task<void> {
-    status = fmt::format("Http/1.1 {}\r\n", std::move(status));
+    status = fmt::format("HTTP/1.1 {}\r\n", std::move(status));
     co_await boost::asio::async_write(
         this->socket, boost::asio::buffer(status.data(), status.size()), boost::asio::transfer_all(), boost::asio::use_awaitable);
   };
