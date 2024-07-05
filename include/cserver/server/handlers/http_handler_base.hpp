@@ -23,14 +23,14 @@ struct HttpHandlerBase : ComponentBase {
     try {
       co_return co_await std::forward<Self>(self).HandleRequestThrow(std::move(request));
     } catch(const std::exception& err) {
-      auto typeName = boost::core::demangle(__cxxabiv1::__cxa_current_exception_type()->name());
       if(self.logging.level <= LoggingLevel::kWarning) {
-        self.logging.template Warning<"In handler with default name {} uncaught exception of type {}: {}">(T::kName, typeName, err.what());
+        self.logging.template Warning<"In handler with default name {} uncaught exception of type {}: {}">(
+            T::kName, boost::core::demangle(__cxxabiv1::__cxa_current_exception_type()->name()), err.what());
       };
     } catch(...) {
-      auto typeName = boost::core::demangle(__cxxabiv1::__cxa_current_exception_type()->name());
       if(self.logging.level <= LoggingLevel::kWarning) {
-        self.logging.template Warning<"In handler with default name {} uncaught exception of type {}">(T::kName, typeName);
+        self.logging.template Warning<"In handler with default name {} uncaught exception of type {}">(
+            T::kName, boost::core::demangle(__cxxabiv1::__cxa_current_exception_type()->name()));
       };
     };
     co_return http::HttpResponse{.statusCode = 500, .statusMessage = "Internal Server Error", .body = "Internal Server Error"};  // NOLINT
