@@ -484,7 +484,7 @@ consteval auto TopologicalSort(const DependencyGraph<DependencyGraphElement<Name
 template <ConstexprConfig config = {}, typename... ComponentConfigs>
 struct ServiceContextBuilder {
   static constexpr auto kList = utempl::kTypeList<ComponentConfigs...>;
-  static constexpr impl::DependenciesUtils<ComponentConfigs...> kUtils;
+  static constexpr impl::DependenciesUtils<ComponentConfigs...> kUtils{};
   static constexpr auto kConfig = config;
   template <typename T, utempl::ConstexprString name = T::kName, typename... Os>
   static consteval auto Append(Options<Os...> = {})
