@@ -49,6 +49,9 @@ CPMAddPackage("gh:Neargye/nameof@0.10.4")
 
 if(CSERVER_USE_LIBRESSL)
 
+set(LIBRESSL_TESTS OFF)
+set(LIBRESSL_APP OFF)
+
 CPMAddPackage(
   NAME LibreSSL
   VERSION 3.9.2
