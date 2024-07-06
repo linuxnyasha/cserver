@@ -13,7 +13,7 @@ set(BOOST_INCLUDE_LIBRARIES
 )
 
 option(CPM_USE_LOCAL_PACKAGES "Use local packages" ON)
-
+option(CSERVER_USE_LIBRESSL "Use LibreSSL" OFF)
 
 file(
   DOWNLOAD
@@ -24,6 +24,9 @@ file(
 )
 include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
 
+set(CMAKE_SKIP_INSTALL_RULES ON)
+set(BOOST_SKIP_INSTALL_RULES ON)
+
 set(BOOST_URL
   "https://github.com/boostorg/boost/releases/download/boost-${TRY_BOOST_VERSION}/boost-${TRY_BOOST_VERSION}-cmake.tar.xz"
 )
@@ -32,21 +35,43 @@ CPMAddPackage(
   VERSION ${TRY_BOOST_VERSION}
   URL ${BOOST_URL}
   EXCLUDE_FROM_ALL ON
-  OPTIONS "BOOST_SKIP_INSTALL_RULES OFF"
 )
-
-
 
 CPMAddPackage("gh:fmtlib/fmt#10.2.1")
 CPMAddPackage(
   NAME llhttp
   VERSION 9.2.1
   URL "https://github.com/nodejs/llhttp/archive/refs/tags/release/v9.2.1.tar.gz"
+  URL_HASH SHA256=3c163891446e529604b590f9ad097b2e98b5ef7e4d3ddcf1cf98b62ca668f23e
 )
 
-find_package(utempl REQUIRED)
-find_package(nameof REQUIRED)
-find_package(OpenSSL REQUIRED)
+CPMAddPackage("gh:Neargye/nameof@0.10.4")
+
+if(CSERVER_USE_LIBRESSL)
+
+CPMAddPackage(
+  NAME LibreSSL
+  VERSION 3.9.2
+  URL "https://github.com/libressl/portable/releases/download/v3.9.2/libressl-3.9.2.tar.gz"
+  URL_HASH SHA256=7b031dac64a59eb6ee3304f7ffb75dad33ab8c9d279c847f92c89fb846068f97
+)
+
+else()
+CPMAddPackage(
+  NAME OpenSSL
+  VERSION 3.3.1
+  URL "https://github.com/openssl/openssl/releases/download/openssl-3.3.1/openssl-3.3.1.tar.gz"
+  URL_HASH SHA256=777cd596284c883375a2a7a11bf5d2786fc5413255efab20c50d6ffe6d020b7e
+)
+
+endif()
+
+CPMAddPackage(
+  NAME utempl
+  URL "https://github.com/linuxnyasha/utempl/archive/refs/heads/main.zip"
+  OPTIONS "ENABLE_TESTS OFF" "ENABLE_EXAMPLES OFF"
+)
+
 
 
 cmake_policy(SET CMP0079 NEW)
@@ -60,15 +85,18 @@ target_include_directories(
 
 target_compile_features(cserver INTERFACE cxx_std_23)
 
+
+
+
 if(TARGET Boost::asio)
   target_link_libraries(cserver INTERFACE utempl::utempl nameof::nameof
-    llhttp::llhttp ${OPENSSL_LIBRARIES}
+    llhttp::llhttp ssl crypto 
     Boost::url Boost::program_options Boost::pfr Boost::asio)
 else()
   find_package(Boost 1.85.0 COMPONENTS url program_options REQUIRED)
 
   target_link_libraries(cserver INTERFACE utempl::utempl nameof::nameof
-    llhttp::llhttp ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+    llhttp::llhttp ssl crypto ${Boost_LIBRARIES})
 endif()
 
 
