@@ -1,8 +1,12 @@
 #include <gtest/gtest.h>
+
 #include <cserver/engine/components.hpp>
 #include <nameof.hpp>
 
-COMPONENT_REQUIRES(Some, requires(T t){{t.f()} -> std::same_as<void>;});
+COMPONENT_REQUIRES(
+    Some, requires(T t) {
+      { t.f() } -> std::same_as<void>;
+    });
 
 struct SomeComponent {
   static constexpr utempl::ConstexprString kName = "some";
@@ -23,39 +27,26 @@ struct OtherComponent2 {
   constexpr OtherComponent2(auto& context) {};
 };
 
-
-
-
-TEST(Meta, AllDependencies) { 
+TEST(Meta, AllDependencies) {
   constexpr auto builder = cserver::ServiceContextBuilder{}
-    .Append<SomeComponent>()
-    .Append<OtherComponent>()
-    .Append<OtherComponent2>()
-    .AppendConfigParam<"threads", 8>()
-    .Sort();
+                               .Append<SomeComponent>()
+                               .Append<OtherComponent>()
+                               .Append<OtherComponent2>()
+                               .AppendConfigParam<"threads", 8>()
+                               .Sort();
 
   constexpr auto dependencies = builder.GetDependencyGraph();
   using Need = utempl::Tuple<OtherComponent&, OtherComponent2&>;
-  using R = decltype(
-    builder
-      .GetServiceContext()
-      .GetContextFor<cserver::ComponentConfig<"some", SomeComponent, {}>>()
-      .FindAllComponents<SomeM>());
+  using R = decltype(builder.GetServiceContext()
+                         .template GetContextFor<cserver::template ComponentConfig<"some", SomeComponent, {}>>()
+                         .template FindAllComponents<SomeM>());
 
-  EXPECT_EQ(NAMEOF_TYPE(R),
-            NAMEOF_TYPE(Need));
-  
+  EXPECT_EQ(NAMEOF_TYPE(R), NAMEOF_TYPE(Need));
+
   using DependenciesNeed = const cserver::DependencyGraph<
-                  cserver::DependencyGraphElement<
-                    "other",
-                    {}>,
-                  cserver::DependencyGraphElement<
-                    "other2",
-                    {}>,
-                  cserver::DependencyGraphElement<
-                    "some",
-                    {utempl::ConstexprString{"other"}, utempl::ConstexprString{"other2"}}>>;
+      cserver::DependencyGraphElement<"other", {}>,
+      cserver::DependencyGraphElement<"other2", {}>,
+      cserver::DependencyGraphElement<"some", {utempl::ConstexprString{"other"}, utempl::ConstexprString{"other2"}}>>;
 
-  EXPECT_EQ(NAMEOF_TYPE(decltype(dependencies)),
-            NAMEOF_TYPE(DependenciesNeed));
+  EXPECT_EQ(NAMEOF_TYPE(decltype(dependencies)), NAMEOF_TYPE(DependenciesNeed));
 };
