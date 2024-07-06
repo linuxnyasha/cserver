@@ -1,0 +1,21 @@
+name: "Setup compilers"
+description: "Setup compilers and build tools"
+inputs:
+  clang:
+    required: false
+    default: "18"
+  gcc:
+    required: false
+    default: "14"
+runs:
+  using: "composite"
+  steps:
+    - shell: bash
+      run: |
+        sudo apt update
+        sudo add-apt-repository universe multiverse
+        sudo apt update
+        sudo apt install gcc-${{ inputs.gcc }} g++-${{ inputs.gcc }}
+        wget https://apt.llvm.org/llvm.sh
+        chmod u+x llvm.sh
+        sudo ./llvm.sh ${{ inputs.clang }}

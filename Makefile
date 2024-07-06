@@ -1,17 +1,24 @@
 MAKEFILE_DIR = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
 TESTS_BIN = $(MAKEFILE_DIR)/build/cserver_tests
 
+CC = clang
 CXX = clang++
 
 CMAKE_CMD ?= cmake
 CMAKE_BUILD_TYPE ?= Debug
-CMAKE_GENERATOR ?= Ninja
+
+ifdef CI
+  CMAKE_GENERATOR ?= "Unix Makefiles"
+else
+  CMAKE_GENERATOR ?= Ninja
+endif
 
 CMAKE_FLAGS += -DCMAKE_CXX_COMPILER=$(CXX) \
-			   -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
-			   -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
-			   -DENABLE_TESTS=1 \
-         -DENABLE_EXAMPLES=1
+               -DCMAKE_C_COMPILER=$(CC) \
+               -DCMAKE_BUILD_TYPE=$(CMAKE_BUILD_TYPE) \
+               -DCMAKE_EXPORT_COMPILE_COMMANDS=1 \
+               -DENABLE_TESTS=1 \
+               -DENABLE_EXAMPLES=1
 
 # Only need to handle Ninja here.
 # Make will inherit the VERBOSE variable, and the -j, -l, and -n flags.
@@ -28,6 +35,12 @@ else
 	BUILD_TOOL = $(MAKE)
 endif
 
+ifdef CI
+  FORMAT_FLAGS = -n --Werror
+else
+  FORMAT_FLAGS = -i
+endif
+
 all: $(TESTS_BIN)
 
 build/.ran-cmake:
@@ -42,8 +55,8 @@ cmake:
 	$(MAKE) build/.ran-cmake
 
 format:
-	clang-format -Werror -i \
-    $(shell find include -name *.hpp) \
+	clang-format $(FORMAT_FLAGS) \
+		$(shell find include -name *.hpp) \
 		$(shell find examples -name *.cpp) \
 		$(shell find tests -name *.cpp)
 
@@ -53,10 +66,14 @@ clean:
 distclean:
 	rm -rf build
 
-# Test
-
 test: $(TESTS_BIN)
 	$(TESTS_BIN)
+
+tidy: build/.ran-cmake
+	clang-tidy -p build \
+		$(shell find include -name *.hpp) \
+		$(shell find examples -name *.cpp) \
+		$(shell find tests -name *.cpp)
 
 FORCE: ;
 
