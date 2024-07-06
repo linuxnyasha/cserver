@@ -388,7 +388,7 @@ struct DependencyInfoInjector {
   template <template <typename...> typename F,
             typename...,
             typename R = decltype(utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(),
-                                                 [](auto... is) -> decltype(FindAllComponentsImpl<is...>()) {
+                                                 []<std::size_t... Is>(utempl::Wrapper<Is>...) -> decltype(FindAllComponentsImpl<Is...>()) {
                                                    std::unreachable();
                                                  }))>
   static auto FindAllComponents() -> R;
