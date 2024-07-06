@@ -347,7 +347,7 @@ struct DependencyInfoInjector {
   int argc{};
   const char** argv{};
   static constexpr ConstexprConfig kConfig = Config;
-  static constexpr DependenciesUtils<Ts...> kUtils;
+  static constexpr DependenciesUtils<Ts...> kUtils{};
   static constexpr utempl::ConstexprString kName = Name;
   template <utempl::ConstexprString name>
   static consteval auto FindComponentType() {
