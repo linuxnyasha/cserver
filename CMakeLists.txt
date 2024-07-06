@@ -4,13 +4,49 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CXX_EXTENSIONS NO)
-set(Boost_USE_MULTITHREADED ON) 
-find_package(fmt REQUIRED)
-find_package(Boost 1.84.0 REQUIRED COMPONENTS url program_options)
+set(Boost_USE_MULTITHREADED ON)
+set(BOOST_NOT_HEADER_ONLY_COMPONENTS_THAT_YOU_NEED "url;program_options")
+set(BOOST_HEADER_ONLY_COMPONENTS_THAT_YOU_NEED "asio;pfr")
+set(TRY_BOOST_VERSION "1.85.0")
+set(BOOST_INCLUDE_LIBRARIES
+    "${BOOST_NOT_HEADER_ONLY_COMPONENTS_THAT_YOU_NEED};${BOOST_HEADER_ONLY_COMPONENTS_THAT_YOU_NEED}"
+)
+
+option(CPM_USE_LOCAL_PACKAGES "Use local packages" ON)
+
+
+file(
+  DOWNLOAD
+  https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.40.0/CPM.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake
+  EXPECTED_HASH
+  SHA256=7b354f3a5976c4626c876850c93944e52c83ec59a159ae5de5be7983f0e17a2a
+)
+include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
+
+set(BOOST_URL
+  "https://github.com/boostorg/boost/releases/download/boost-${TRY_BOOST_VERSION}/boost-${TRY_BOOST_VERSION}-cmake.tar.xz"
+)
+CPMAddPackage(
+  NAME Boost
+  VERSION ${TRY_BOOST_VERSION}
+  URL ${BOOST_URL}
+  EXCLUDE_FROM_ALL ON
+  OPTIONS "BOOST_SKIP_INSTALL_RULES OFF"
+)
+
+
+
+CPMAddPackage("gh:fmtlib/fmt#10.2.1")
+CPMAddPackage(
+  NAME llhttp
+  VERSION 9.2.1
+  URL "https://github.com/nodejs/llhttp/archive/refs/tags/release/v9.2.1.tar.gz"
+)
+
 find_package(utempl REQUIRED)
-find_package(llhttp REQUIRED)
-find_package(OpenSSL REQUIRED)
 find_package(nameof REQUIRED)
+find_package(OpenSSL REQUIRED)
 
 
 cmake_policy(SET CMP0079 NEW)
@@ -21,9 +57,20 @@ target_include_directories(
   cserver
   INTERFACE $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
-target_link_libraries(cserver INTERFACE utempl::utempl nameof::nameof ${Boost_LIBRARIES} llhttp ${OPENSSL_LIBRARIES} )
 
 target_compile_features(cserver INTERFACE cxx_std_23)
+
+if(TARGET Boost::asio)
+  target_link_libraries(cserver INTERFACE utempl::utempl nameof::nameof
+    llhttp::llhttp ${OPENSSL_LIBRARIES}
+    Boost::url Boost::program_options Boost::pfr Boost::asio)
+else()
+  find_package(Boost 1.85.0 COMPONENTS url program_options REQUIRED)
+
+  target_link_libraries(cserver INTERFACE utempl::utempl nameof::nameof
+    llhttp::llhttp ${OPENSSL_LIBRARIES} ${Boost_LIBRARIES})
+endif()
+
 
 install(TARGETS cserver
   EXPORT cserverTargets
