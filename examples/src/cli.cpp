@@ -1,8 +1,7 @@
 #include <cserver/components/cli/manager.hpp>
 #include <cserver/components/cli/struct.hpp>
-#include <cserver/server/server/server.hpp>
 #include <cserver/server/handlers/http_handler_base.hpp>
-
+#include <cserver/server/server/server.hpp>
 
 struct SomeStruct {
   static_assert(utempl::OpenStruct<SomeStruct>());
@@ -19,17 +18,16 @@ struct SomeOtherComponent : public cserver::server::handlers::HttpHandlerBaseWit
   static constexpr utempl::ConstexprString kName = "name";
   static constexpr utempl::ConstexprString kHandlerManagerName = "server";
   SomeComponent& some;
-  inline constexpr SomeOtherComponent(auto& context) :
-      HttpHandlerBaseWithAdder(context),
-      some(context.template FindComponent<"component">()) {};
- 
+  explicit constexpr SomeOtherComponent(auto& context) :
+      HttpHandlerBaseWithAdder(context), some(context.template FindComponent<"component">()) {};
+
   inline auto HandleRequestThrow(const cserver::server::http::HttpRequest&) -> cserver::Task<cserver::server::http::HttpResponse> {
     co_return cserver::server::http::HttpResponse{.body = this->some.field};
   };
 };
 
-
-
+// clang-format off
+// NOLINTBEGIN
 auto main(int argc, const char** argv) -> int {
   cserver::ServiceContextBuilder{}
     .AppendConfigParam<"threads", 8>()
@@ -47,3 +45,5 @@ auto main(int argc, const char** argv) -> int {
     .Sort()
   .Run(argc, argv);
 };
+// NOLINTEND
+// clang-format on

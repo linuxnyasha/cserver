@@ -1,19 +1,21 @@
-#include <cserver/server/server/server.hpp>
 #include <cserver/engine/basic/task_processor.hpp>
 #include <cserver/server/handlers/http_handler_base.hpp>
- 
+#include <cserver/server/server/server.hpp>
+
 struct SomeComponent : public cserver::server::handlers::HttpHandlerBaseWithAdder<SomeComponent> {
   static constexpr utempl::ConstexprString kPath = "/v1/some/";
   static constexpr utempl::ConstexprString kName = "name";
   static constexpr utempl::ConstexprString kHandlerManagerName = "server";
-  inline constexpr SomeComponent(auto& context) :
-      HttpHandlerBaseWithAdder(context) {};
- 
+  explicit constexpr SomeComponent(auto& context) : HttpHandlerBaseWithAdder(context) {};
+
   inline auto HandleRequestThrow(const cserver::server::http::HttpRequest& request) -> cserver::Task<cserver::server::http::HttpResponse> {
     co_return cserver::server::http::HttpResponse{.body = request.url.data()};
   };
 };
- 
+
+// clang-format off
+// NOLINTBEGIN
+
 auto main() -> int {
   cserver::ServiceContextBuilder{}
     .AppendConfigParam<"threads", 8>()
@@ -28,3 +30,6 @@ auto main() -> int {
     .Sort()
   .Run();
 };
+
+// NOLINTEND
+// clang-format on
