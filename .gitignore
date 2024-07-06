@@ -12,3 +12,9 @@ compile_commands.json
 cserverConfig.cmake
 cserverConfigVersion.cmake
 install_manifest.txt
+CPM_modules
+_deps
+cmake/CPM.cmake
+cpm-package-lock.cmake
+include/openssl
+include/tls.h
