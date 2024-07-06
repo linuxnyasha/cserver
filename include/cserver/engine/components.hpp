@@ -155,8 +155,8 @@ struct ServiceContextForComponent {
   template <template <typename...> typename F>
   constexpr auto FindAllComponents() {
     return utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(),
-                          [&](auto... is) -> utempl::Tuple<decltype(*Get<is>(context.storage))&...> {
-                            return {context.template FindComponent<Component, is>()...};
+                          [&]<std::size_t... Is>(utempl::Wrapper<Is>...) -> utempl::Tuple<decltype(*utempl::Get<Is>(context.storage))&...> {
+                            return {context.template FindComponent<Component, Is>()...};
                           });
   };
 };
@@ -229,10 +229,10 @@ inline constexpr auto InitComponents(T& ccontext, int ac, const char** av) -> vo
 
 template <typename... Ts>
 struct DependenciesUtils {
-  static constexpr utempl::TypeList<typename Ts::Type...> kTypeList;
+  static constexpr utempl::TypeList<typename Ts::Type...> kTypeList{};
   static constexpr auto kOptions = utempl::Tuple{Ts::kOptions...};
   static constexpr auto kNames = utempl::Tuple{Ts::kName...};
-  static constexpr utempl::TypeList<Ts...> kComponentConfigs;
+  static constexpr utempl::TypeList<Ts...> kComponentConfigs{};
   template <typename T>
   static consteval auto GetIndexByType() -> std::size_t {
     return utempl::Find<std::remove_cvref_t<T>>(kTypeList);
@@ -282,7 +282,7 @@ template <ConstexprConfig config, utempl::Tuple DependencyGraph, typename... Ts>
 struct ServiceContext {
   static constexpr auto kConfig = config;
   static constexpr auto kThreadsCount = config.template Get<"threads">();
-  static constexpr impl::DependenciesUtils<Ts...> kUtils;
+  static constexpr impl::DependenciesUtils<Ts...> kUtils{};
   engine::basic::TaskProcessor<kThreadsCount - 1> taskProcessor;
   utempl::Tuple<std::optional<typename Ts::Type>...> storage{};
 
@@ -309,7 +309,7 @@ struct ServiceContext {
   } ComponentOptions{};
   static constexpr struct {
     constexpr auto operator=(auto&&) const noexcept {};
-  } RequiredComponent;
+  } RequiredComponent{};
 
  public:
   template <typename Current, std::size_t I>
@@ -347,7 +347,7 @@ struct DependencyInfoInjector {
   int argc{};
   const char** argv{};
   static constexpr ConstexprConfig kConfig = Config;
-  static constexpr DependenciesUtils<Ts...> kUtils;
+  static constexpr DependenciesUtils<Ts...> kUtils{};
   static constexpr utempl::ConstexprString kName = Name;
   template <utempl::ConstexprString name>
   static consteval auto FindComponentType() {
@@ -388,7 +388,7 @@ struct DependencyInfoInjector {
   template <template <typename...> typename F,
             typename...,
             typename R = decltype(utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(),
-                                                 [](auto... is) -> decltype(FindAllComponentsImpl<is...>()) {
+                                                 []<std::size_t... Is>(utempl::Wrapper<Is>...) -> decltype(FindAllComponentsImpl<Is...>()) {
                                                    std::unreachable();
                                                  }))>
   static auto FindAllComponents() -> R;
@@ -484,7 +484,7 @@ consteval auto TopologicalSort(const DependencyGraph<DependencyGraphElement<Name
 template <ConstexprConfig config = {}, typename... ComponentConfigs>
 struct ServiceContextBuilder {
   static constexpr auto kList = utempl::kTypeList<ComponentConfigs...>;
-  static constexpr impl::DependenciesUtils<ComponentConfigs...> kUtils;
+  static constexpr impl::DependenciesUtils<ComponentConfigs...> kUtils{};
   static constexpr auto kConfig = config;
   template <typename T, utempl::ConstexprString name = T::kName, typename... Os>
   static consteval auto Append(Options<Os...> = {})
@@ -537,7 +537,7 @@ struct ServiceContextBuilder {
   template <template <typename...> typename F>
   static consteval auto FindAllComponents() {
     return utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(),
-                          [](auto... is) -> utempl::Tuple<typename decltype(Get<is>(utempl::kTypeList<ComponentConfigs...>))::Type...> {
+                          []<std::size_t... Is>(utempl::Wrapper<Is>...) -> utempl::Tuple<typename decltype(utempl::Get<Is>(utempl::kTypeList<ComponentConfigs...>))::Type...> {
                             std::unreachable();
                           });
   };
