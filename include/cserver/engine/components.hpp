@@ -537,7 +537,7 @@ struct ServiceContextBuilder {
   template <template <typename...> typename F>
   static consteval auto FindAllComponents() {
     return utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(),
-                          []<std::size_t... Is>(utempl::Wrapper<Is>...) -> utempl::Tuple<typename decltype(utempl::Get<Is>(utempl::kTypeList<ComponentConfigs...>))::Type...> {
+                          [](auto... is) -> utempl::Tuple<typename decltype(utempl::Get<is>(utempl::kTypeList<ComponentConfigs...>))::Type...> {
                             std::unreachable();
                           });
   };
