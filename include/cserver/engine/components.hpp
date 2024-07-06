@@ -156,7 +156,7 @@ struct ServiceContextForComponent {
   constexpr auto FindAllComponents() {
     return utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(),
                           [&]<std::size_t... Is>(utempl::Wrapper<Is>...) -> utempl::Tuple<decltype(*utempl::Get<Is>(context.storage))&...> {
-                            return {context.template FindComponent<Component, is>()...};
+                            return {context.template FindComponent<Component, Is>()...};
                           });
   };
 };
