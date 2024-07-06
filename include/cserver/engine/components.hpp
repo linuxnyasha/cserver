@@ -155,7 +155,7 @@ struct ServiceContextForComponent {
   template <template <typename...> typename F>
   constexpr auto FindAllComponents() {
     return utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(),
-                          [&](auto... is) -> utempl::Tuple<decltype(*utempl::Get<is>(context.storage))&...> {
+                          [&](auto... is) -> utempl::Tuple<decltype(*utempl::Get<*is>(context.storage))&...> {
                             return {context.template FindComponent<Component, is>()...};
                           });
   };
@@ -388,7 +388,7 @@ struct DependencyInfoInjector {
   template <template <typename...> typename F,
             typename...,
             typename R = decltype(utempl::Unpack(utempl::PackConstexprWrapper<kUtils.template GetAllIndexes<F>(), utempl::Tuple<>>(),
-                                                 []<std::size_t... Is>(utempl::Wrapper<Is>...) -> decltype(FindAllComponentsImpl<Is...>()) {
+                                                 [](auto... is) -> decltype(FindAllComponentsImpl<*is...>()) {
                                                    std::unreachable();
                                                  }))>
   static auto FindAllComponents() -> R;
