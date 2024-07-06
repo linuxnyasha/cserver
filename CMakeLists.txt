@@ -93,7 +93,7 @@ target_compile_features(cserver INTERFACE cxx_std_23)
 
 if(TARGET Boost::asio)
   target_link_libraries(cserver INTERFACE utempl::utempl nameof::nameof
-    llhttp::llhttp ssl crypto 
+    llhttp::llhttp ssl crypto
     Boost::url Boost::program_options Boost::pfr Boost::asio)
 else()
   find_package(Boost 1.85.0 COMPONENTS url program_options REQUIRED)
@@ -122,7 +122,7 @@ configure_package_config_file(
   ${CMAKE_INSTALL_DATAROOTDIR}/cserver/cmake)
 
 install(EXPORT cserverTargets
-        FILE cserverTargets.cmake 
+        FILE cserverTargets.cmake
         NAMESPACE cserver::
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/cserver/cmake)
 
@@ -133,8 +133,12 @@ install(FILES "${PROJECT_BINARY_DIR}/cserverConfig.cmake"
 
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/include/cserver DESTINATION include)
 
-if(ENABLE_TESTS) 
-  find_package(GTest REQUIRED)
+if(ENABLE_TESTS)
+  CPMAddPackage(
+    NAME GTest
+    URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip
+  )
+
   enable_testing()
   file(GLOB SOURCES tests/* tests/*/* tests/*/*/*)
   add_executable(cserver_tests ${SOURCES})
@@ -157,4 +161,3 @@ if(ENABLE_EXAMPLES)
       endif()
   endforeach()
 endif()
-
