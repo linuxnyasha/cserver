@@ -334,9 +334,26 @@ namespace impl {
 template <typename Current, std::size_t I>
 struct DependencyInfoKey {};
 
+template <auto F>
+consteval auto IsConstantImpl(...) {
+  return false;
+};
+
+template <auto F, auto = (F(), 1)>
+consteval auto IsConstantImpl(bool) {
+  return true;
+};
+
+template <auto F>
+consteval auto IsConstant() -> bool {
+  return IsConstantImpl<F>(true);  // NOLINT
+};
+
 template <typename T, auto... Args>
 inline constexpr auto Use() {
-  std::ignore = __builtin_constant_p(T{Args...});
+  std::ignore = IsConstant<[] {
+    T{Args...};
+  }>();
 };
 
 template <typename...>
