@@ -336,7 +336,7 @@ struct DependencyInfoKey {};
 
 template <typename T, auto... Args>
 inline constexpr auto Use() {
-  std::ignore = T{Args...};
+  std::ignore = __builtin_constant_p(T{Args...});
 };
 
 template <typename...>
