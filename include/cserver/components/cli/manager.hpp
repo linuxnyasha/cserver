@@ -74,6 +74,7 @@ struct Manager {
         constexpr std::string_view nname = nnname.substr(0, nnname.find(','));
         utempl::ConstexprString<nname.size() + 1> name;
         std::ranges::copy_n(nname.begin(), nname.size(), name.begin());
+        name.data[nname.size()] = '\0';
         if(this->variableMap.count(name.begin())) {
           return this->variableMap[name.begin()].template as<typename decltype(fieldConfig)::Type>();
         };
