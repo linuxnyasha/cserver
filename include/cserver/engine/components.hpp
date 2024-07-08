@@ -2,6 +2,7 @@
 #include <cxxabi.h>
 
 #include <boost/core/demangle.hpp>
+#include <cserver/components/logger.hpp>
 #include <cserver/engine/basic/task_processor.hpp>
 #include <cserver/engine/coroutine.hpp>
 #include <utempl/loopholes/counter.hpp>
@@ -187,21 +188,46 @@ inline constexpr auto InitComponents(T& ccontext, int ac, const char** av) -> vo
   static utempl::Tuple inited =
       TransformDependencyGraphToTupleWithDependenciesToInitedFlagChanges<AsyncConditionVariable, DependencyGraph>(ioContext);
   auto work = make_work_guard(ioContext);
-  []<std::size_t... Is>(std::index_sequence<Is...>) {
+  [](auto... is) {
     // clang-format off
-    (boost::asio::co_spawn(ioContext, []() -> cserver::Task<> {
-      using Current = decltype(Get<Is>(decltype(T::kUtils)::kComponentConfigs));
-      auto& dependencies = Get<Is>(inited);
+    (boost::asio::co_spawn(ioContext, [](auto is) -> cserver::Task<> {
+      using Current = decltype(Get<is>(decltype(T::kUtils)::kComponentConfigs));
+      auto& dependencies = Get<is>(inited);
+      constexpr auto logLevel = T::kConfig.template Get<"logging">().template Get<"level">();
+      if constexpr(logLevel == LoggingLevel::kTrace) {
+        fmt::println("[TRACE] Started coroutine for initialisation component {} with flag address {}", 
+                     static_cast<std::string_view>(Current::kName),
+                     static_cast<void*>(&GetInitFlagFor<AsyncConditionVariable, is>(ioContext)));
+      };
       for(auto* flag : dependencies) {
+        if constexpr(logLevel == LoggingLevel::kTrace) {
+          fmt::println("[TRACE] {} Component: Waiting flag on address {}",
+                       static_cast<std::string_view>(Current::kName),
+                       static_cast<void*>(flag));
+        };
         co_await flag->AsyncWait();
+        if constexpr(logLevel == LoggingLevel::kTrace) {
+          fmt::println("[TRACE] {} Component: Waited flag on address {}",
+                       static_cast<std::string_view>(Current::kName),
+                       static_cast<void*>(flag));
+        };
+
       };
       try {
         if constexpr(Current::kName == cliArgs) {
           ServiceContextForComponentWithCliArgs<Current, T> currentContext{context, argc, argv};
-          Get<Is>(context.storage).emplace(currentContext);
+          if constexpr(logLevel == LoggingLevel::kTrace) {
+            fmt::println("[TRACE] {} Component: call constructor with cli args",
+                         static_cast<std::string_view>(Current::kName));
+          };
+          Get<is>(context.storage).emplace(currentContext);
         } else {
           ServiceContextForComponent<Current, T> currentContext{context};
-          Get<Is>(context.storage).emplace(currentContext);
+          if constexpr(logLevel == LoggingLevel::kTrace) {
+            fmt::println("[TRACE] {} Component: call constructor",
+                         static_cast<std::string_view>(Current::kName));
+          };
+          Get<is>(context.storage).emplace(currentContext);
         };
       } catch(std::exception& error) {
         auto typeName = boost::core::demangle(__cxxabiv1::__cxa_current_exception_type()->name());
@@ -217,14 +243,18 @@ inline constexpr auto InitComponents(T& ccontext, int ac, const char** av) -> vo
                      typeName);
         ioContext.stop();
       };
-      auto& componentInitFlag = GetInitFlagFor<AsyncConditionVariable, Is>(ioContext);
-      componentInitFlag.NotifyAll();
-      if constexpr(requires{Get<Is>(context.storage)->Run();}) {
-        Get<Is>(context.storage)->Run();
+      auto& componentInitFlag = GetInitFlagFor<AsyncConditionVariable, is>(ioContext);
+      if constexpr(logLevel == LoggingLevel::kTrace) {
+        fmt::println("[TRACE] {} Component: notify",
+                      static_cast<std::string_view>(Current::kName));
       };
-    }(), boost::asio::detached), ...);
+      componentInitFlag.NotifyAll();
+      if constexpr(requires{Get<is>(context.storage)->Run();}) {
+        Get<is>(context.storage)->Run();
+      };
+    }(is), boost::asio::detached), ...);
     // clang-format on
-  }(std::make_index_sequence<utempl::kTupleSize<decltype(DependencyGraph)>>());
+  } | utempl::kSeq<utempl::kTupleSize<decltype(DependencyGraph)>>;
 };
 
 template <typename... Ts>
