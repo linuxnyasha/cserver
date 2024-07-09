@@ -1,5 +1,10 @@
+VERSION = $(shell git describe --tags --always --long)
+
 MAKEFILE_DIR = $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
-TESTS_BIN = $(MAKEFILE_DIR)/build/cserver_tests
+BUILD_DIR = $(MAKEFILE_DIR)/build
+TESTS_BIN = $(BUILD_DIR)/cserver_tests
+
+DOXYGEN ?= doxygen
 
 CC = clang
 CXX = clang++
@@ -75,6 +80,13 @@ tidy: build/.ran-cmake
 		$(shell find examples -name *.cpp) \
 		$(shell find tests -name *.cpp)
 
+docs:
+	@( \
+		cat docs/doxygen.conf; \
+		echo PROJECT_NUMBER=$(VERSION); \
+		echo OUTPUT_DIRECTORY=$(BUILD_DIR)/docs \
+	) | $(DOXYGEN) -
+
 FORCE: ;
 
-.PHONY: all cmake test format clean distclean
+.PHONY: all cmake format test tidy docs clean distclean
