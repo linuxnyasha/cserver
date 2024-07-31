@@ -1,5 +1,6 @@
-#pragma once
+module;
 #include <boost/asio.hpp>
+export module cserver.engine.coroutine;
 
 namespace cserver {
 
@@ -20,7 +21,7 @@ struct SetThreadId : public std::suspend_never {
 
 }  // namespace this_coro
 
-template <typename T = void>
+export template <typename T = void>
 using Task = boost::asio::awaitable<T>;
 
 template <typename...>
@@ -28,7 +29,7 @@ struct TaskAwaitable {};
 
 }  // namespace cserver
 
-namespace boost::asio::detail {
+export namespace boost::asio::detail {
 /*
 Part of this code is taken from boost asio
 

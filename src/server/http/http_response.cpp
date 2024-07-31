@@ -1,8 +1,6 @@
-#pragma once
-#include <fmt/format.h>
-
-#include <sstream>
-#include <unordered_map>
+export module cserver.server.http.http_response;
+import fmt;
+import std;
 
 namespace cserver::server::http {
 

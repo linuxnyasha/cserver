@@ -20,10 +20,10 @@ auto main() -> int {
   cserver::ServiceContextBuilder{}
     .AppendConfigParam<"threads", 8>()
     .AppendConfigParam<"logging", cserver::ConstexprConfig{}
-      .Append<"level">(cserver::LoggingLevel::kWarning)>()
+      .Append<"level">(cserver::LoggingLevel::kTrace)>()
     .AppendConfigParam<"server", cserver::ConstexprConfig{}
       .Append<"taskProcessor">(utempl::ConstexprString{"basicTaskProcessor"})
-      .Append<"port">(55555)>()
+      .Append<"port">(55556)>()
     .Append<cserver::Logging>()
     .Append<cserver::server::server::Server<>>()
     .Append<SomeComponent, "component">()

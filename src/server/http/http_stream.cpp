@@ -1,8 +1,9 @@
-#pragma once
-#include <fmt/format.h>
-
+module;
 #include <boost/asio.hpp>
-#include <cserver/engine/coroutine.hpp>
+export module cserver.server.http.http_stream;
+import cserver.engine.coroutine;
+import fmt;
+import std;
 
 namespace cserver::server::http {
 

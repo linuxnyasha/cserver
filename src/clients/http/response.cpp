@@ -1,7 +1,8 @@
-#pragma once
+module;
 #include <boost/asio/ssl.hpp>
-#include <cserver/engine/coroutine.hpp>
-#include <cserver/server/http/http_response.hpp>
+export module cserver.clients.http.response;
+import cserver.engine.coroutine;
+import cserver.server.http.http_response;
 
 namespace cserver::clients::http {
 

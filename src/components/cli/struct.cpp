@@ -1,9 +1,10 @@
-#pragma once
+module;
 #include <boost/pfr.hpp>
-#include <cserver/components/cli/manager.hpp>
-#include <cserver/engine/components.hpp>
-#include <cserver/engine/not_implemented.hpp>
-#include <utempl/attributes.hpp>
+export module cserver.components.cli.cli_struct;
+import cserver.components.cli.manager;
+import cserver.engine.components;
+import cserver.engine.not_implemented;
+import utempl;
 
 namespace cserver::cli {
 

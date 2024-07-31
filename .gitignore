@@ -18,3 +18,4 @@ cmake/CPM.cmake
 cpm-package-lock.cmake
 include/openssl
 include/tls.h
+lib__cmake_cxx23.a
