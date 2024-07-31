@@ -1,13 +1,12 @@
-#pragma once
-#include <fmt/format.h>
-
+module;
 #include <boost/url.hpp>
-#include <sstream>
-#include <unordered_map>
+export module cserver.server.http.http_request;
+import std;
+import fmt;
 
 namespace cserver::server::http {
 
-struct HttpRequest {
+export struct HttpRequest {
   std::string method = {};
   boost::urls::url url = {};
   std::unordered_map<std::string, std::string> headers = {};

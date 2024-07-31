@@ -1,10 +1,9 @@
-#pragma once
-#include <cserver/components/loggable_component_base.hpp>
-#include <cserver/engine/components.hpp>
-#include <cserver/engine/coroutine.hpp>
-#include <cserver/server/http/http_request.hpp>
-#include <cserver/server/http/http_response.hpp>
-#include <cserver/server/http/http_stream.hpp>
+export module cserver.server.handlers.http_handler_base;
+import cserver.components.loggable_component_base;
+import cserver.engine.coroutine;
+import cserver.server.http.http_request;
+import cserver.server.http.http_response;
+import cserver.server.http.http_stream;
 
 namespace cserver::server::handlers {
 

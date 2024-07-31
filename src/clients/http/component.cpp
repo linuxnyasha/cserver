@@ -1,12 +1,15 @@
-#pragma once
+module;
 #include <boost/asio.hpp>
 #include <boost/asio/ssl.hpp>
-#include <cserver/clients/http/request.hpp>
-#include <cserver/clients/http/response.hpp>
-#include <cserver/engine/components.hpp>
-#include <cserver/engine/coroutine.hpp>
-#include <cserver/engine/use_streaming.hpp>
-#include <utempl/constexpr_string.hpp>
+export module cserver.clients.http.component;
+import cserver.clients.http.request;
+import cserver.clients.http.response;
+import cserver.engine.components;
+import cserver.engine.coroutine;
+import cserver.engine.use_streaming;
+import std;
+import utempl;
+
 
 namespace cserver::server::http {
 

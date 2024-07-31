@@ -1,5 +1,9 @@
-#pragma once
-#include <cserver/engine/coroutine.hpp>
+module;
+#include <boost/asio.hpp>
+export module cserver.engine.network;
+import cserver.engine.coroutine;
+import std;
+
 namespace cserver::network {
 
 class DeadLineTimer;

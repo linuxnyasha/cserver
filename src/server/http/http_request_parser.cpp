@@ -1,11 +1,11 @@
-#pragma once
+module;
 #include <llhttp.h>
-
-#include <cserver/server/http/http_request.hpp>
+export module cserver.server.http.http_request_parser;
+import cserver.server.http.http_request;
 
 namespace cserver::server::http {
 
-struct HttpRequestParser : private llhttp_t, public HttpRequest {
+export struct HttpRequestParser : private llhttp_t, public HttpRequest {
   bool err = false;
   bool done = false;
   std::string headerField = {};

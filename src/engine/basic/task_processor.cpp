@@ -1,7 +1,8 @@
-#pragma once
+module;
 #include <boost/asio.hpp>
-#include <thread>
-#include <utempl/constexpr_string.hpp>
+export module cserver.engine.basic.task_processor;
+import utempl;
+import std;
 
 namespace cserver::engine::basic {
 

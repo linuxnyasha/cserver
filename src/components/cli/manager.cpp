@@ -1,10 +1,12 @@
-#pragma once
+module;
 #include <boost/program_options.hpp>
-#include <cserver/engine/components.hpp>
-#include <cserver/engine/not_implemented.hpp>
-#include <iostream>
 #include <nameof.hpp>
-#include <utempl/optional.hpp>
+export module cserver.components.cli.manager;
+import cserver.engine.components;
+import cserver.engine.not_implemented;
+import std;
+import utempl;
+
 
 namespace cserver::cli {
 

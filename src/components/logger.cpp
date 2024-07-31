@@ -1,10 +1,8 @@
-#pragma once
-#include <fmt/compile.h>
-#include <fmt/format.h>
+export module cserver.components.logger;
+import fmt;
+import std;
+import utempl;
 
-#include <array>
-#include <iostream>
-#include <utempl/constexpr_string.hpp>
 
 namespace cserver {
 

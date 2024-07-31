@@ -1,11 +1,13 @@
-#pragma once
+module;
 #include <boost/asio.hpp>
-#include <cserver/components/work_guard.hpp>
-#include <cserver/engine/components.hpp>
-#include <cserver/engine/coroutine.hpp>
-#include <cserver/server/http/http_request_parser.hpp>
-#include <cserver/server/http/http_response.hpp>
-#include <cserver/server/http/http_stream.hpp>
+export module cserver.server.server.server;
+import cserver.components.work_guard;
+import cserver.engine.components;
+import cserver.engine.coroutine;
+import cserver.server.http.http_request_parser;
+import cserver.server.http.http_response;
+import cserver.server.http.http_stream;
+
 
 namespace cserver::server::server {
 

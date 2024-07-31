@@ -1,12 +1,11 @@
-#pragma once
+module;
 #include <cxxabi.h>
-
 #include <boost/core/demangle.hpp>
-#include <cserver/components/logger.hpp>
-#include <cserver/engine/basic/task_processor.hpp>
-#include <cserver/engine/coroutine.hpp>
-#include <utempl/loopholes/counter.hpp>
-#include <utempl/utils.hpp>
+export module cserver.engine.components;
+import cserver.components.logger;
+import cserver.engine.basic.task_processor;
+import cserver.engine.coroutine;
+
 
 namespace cserver {
 
@@ -284,7 +283,7 @@ struct DependenciesUtils {
     return [&](auto... is) {
       return utempl::TupleCat(std::array<std::size_t, 0>{}, [&] {
         if constexpr(F<typename Ts::Type>::value) {
-          return std::to_array<std::size_t>({is});
+          return std::to_array<std::size_t>({is...});
         } else {
           return std::array<std::size_t, 0>{};
         };

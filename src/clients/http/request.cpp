@@ -1,7 +1,8 @@
-#pragma once
-#include <cserver/engine/coroutine.hpp>
-#include <cserver/server/http/http_request.hpp>
-#include <cserver/server/http/http_response.hpp>
+export module cserver.clients.http.request;
+import cserver.engine.coroutine;
+import cserver.server.http.http_request;
+import cserver.server.http.http_response;
+import std;
 
 namespace cserver::clients::http {
 template <typename HttpClient>
